@@ -42,7 +42,7 @@ def create_kicad_project():
     sexp.append('  (lib_symbols')
     
     # Device:R definition
-    sexp.append('    (symbol "Device:R" (pin_numbers write_pin_numbers) (in_bom yes) (on_board yes)')
+    sexp.append('    (symbol "Device:R" (in_bom yes) (on_board yes)')
     sexp.append('      (property "Reference" "R" (id 0) (at 2.032 0 90) (effects (font (size 1.27 1.27))))')
     sexp.append('      (property "Value" "R" (id 1) (at 2.032 -2.54 90) (effects (font (size 1.27 1.27))))')
     sexp.append('      (property "Footprint" "Resistor_SMD:R_0805_2012Metric" (id 2) (at 0 0 0) (effects (font (size 1.27 1.27)) hide))')
@@ -56,7 +56,7 @@ def create_kicad_project():
     sexp.append('    )')
     
     # Device:D_Zener definition
-    sexp.append('    (symbol "Device:D_Zener" (pin_numbers write_pin_numbers) (in_bom yes) (on_board yes)')
+    sexp.append('    (symbol "Device:D_Zener" (in_bom yes) (on_board yes)')
     sexp.append('      (property "Reference" "D" (id 0) (at -1.27 2.54 0) (effects (font (size 1.27 1.27)) (justify left)))')
     sexp.append('      (property "Value" "D_Zener" (id 1) (at -1.27 -2.54 0) (effects (font (size 1.27 1.27)) (justify left)))')
     sexp.append('      (property "Footprint" "Diode_SMD:D_SOD-123" (id 2) (at 0 0 0) (effects (font (size 1.27 1.27)) hide))')
