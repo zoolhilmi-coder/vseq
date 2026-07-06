@@ -218,6 +218,7 @@ body{display:grid;grid-template-rows:var(--toolbar-h) 1fr var(--bottom-h)}
     <button id="btn-connect" class="btn btn-connect">⊕ <span id="connect-label">Connect USB</span></button>
     <div class="toolbar-sep"></div>
     <button id="btn-reset" class="btn btn-icon">↺ Reset</button>
+    <button id="btn-clear-rulers" class="btn btn-icon">❌ Clear Rulers</button>
     <button id="btn-export-png" class="btn btn-icon">⬇ PNG</button>
     <button id="btn-export-csv" class="btn btn-icon">⬇ CSV</button>
   </div>
@@ -360,6 +361,7 @@ const appState = {
   })),
   demoMode:true, capturing:false, connected:false,
   sampleCount:0, lastBatchTime:0, sampleRate:0,
+  savedRulers: [],
 };
 
 /* ─── Renderer constants ─── */
@@ -512,72 +514,108 @@ function rendRender() {
     ctx.beginPath(); ctx.moveTo(ren.hoverX,0); ctx.lineTo(ren.hoverX,plotH); ctx.stroke();
     ctx.setLineDash([]);
   }
-  // Highlight region between cursors
+  // Active temporary selection ruler (while dragging/selecting)
+  const nCh = appState.channels.length;
+  const chH = plotH / nCh;
   if (ren.cursor1T !== null && ren.cursor2T !== null) {
     const x1 = t2x(ren.cursor1T, vS, vE, plotW);
     const x2 = t2x(ren.cursor2T, vS, vE, plotW);
     const minX = Math.max(LEFT_M, Math.min(x1, x2));
     const maxX = Math.min(LEFT_M + plotW, Math.max(x1, x2));
     if (maxX > minX) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-      ctx.fillRect(minX, 0, maxX - minX, plotH);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-      const stripH = 8;
-      for (let sy = 0; sy < plotH; sy += stripH * 2) ctx.fillRect(minX, sy, maxX - minX, stripH);
+      // Find the channel strip being hovered
+      const chIndex = Math.floor((ren._dragY !== undefined ? ren._dragY : 20) / chH);
+      if (chIndex >= 0 && chIndex < nCh) {
+        const ch = appState.channels[chIndex];
+        if (ch.visible) {
+          const y = chIndex * chH;
+          // Highlight strip background
+          ctx.fillStyle = 'rgba(0, 255, 136, 0.08)';
+          ctx.fillRect(minX, y, maxX - minX, chH);
 
-      // Draw visual time ruler (pembaris ukur masa) for each visible channel
-      const dt = Math.abs(ren.cursor2T - ren.cursor1T);
-      const dT = dt < 1 ? (dt * 1000).toFixed(0) + ' us'
-               : dt < 1000 ? dt.toFixed(2) + ' ms'
-               : (dt / 1000).toFixed(3) + ' s';
-      const hz = dt > 0 ? (1000 / dt).toFixed(1) + ' Hz' : '';
-      const label = hz ? `${dT} (${hz})` : dT;
+          // Draw double-sided arrow ruler centered in this strip
+          const ry = Math.round(y + chH / 2);
+          ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(minX, ry); ctx.lineTo(maxX, ry);
+          // Arrowheads
+          ctx.moveTo(minX + 5, ry - 3); ctx.lineTo(minX, ry); ctx.lineTo(minX + 5, ry + 3);
+          ctx.moveTo(maxX - 5, ry - 3); ctx.lineTo(maxX, ry); ctx.lineTo(maxX - 5, ry + 3);
+          ctx.stroke();
 
-      const nCh = appState.channels.length;
-      const chH = plotH / nCh;
+          // Duration Text Label
+          const dt = Math.abs(ren.cursor2T - ren.cursor1T);
+          const dT = dt < 1 ? (dt * 1000).toFixed(0) + ' us'
+                   : dt < 1000 ? dt.toFixed(2) + ' ms'
+                   : (dt / 1000).toFixed(3) + ' s';
 
-      for (let i = 0; i < nCh; i++) {
-        const ch = appState.channels[i];
-        if (!ch.visible) continue;
-
-        // Vertically center the ruler inside the channel strip
-        const ry = Math.round(i * chH + chH / 2);
-
-        ctx.strokeStyle = 'rgba(0, 255, 136, 0.45)'; ctx.lineWidth = 1;
-        ctx.beginPath();
-        // Horizontal line
-        ctx.moveTo(minX, ry); ctx.lineTo(maxX, ry);
-        
-        // Left arrowhead (<)
-        ctx.moveTo(minX + 5, ry - 3);
-        ctx.lineTo(minX, ry);
-        ctx.lineTo(minX + 5, ry + 3);
-        
-        // Right arrowhead (>)
-        ctx.moveTo(maxX - 5, ry - 3);
-        ctx.lineTo(maxX, ry);
-        ctx.lineTo(maxX - 5, ry + 3);
-        
-        ctx.stroke();
-
-        // Text label in the middle of each ruler
-        ctx.font = '700 8px JetBrains Mono, monospace';
-        ctx.textAlign = 'center';
-        const tw = ctx.measureText(label).width + 6;
-        if (maxX - minX > tw + 10) {
+          ctx.font = '700 8px JetBrains Mono, monospace';
+          ctx.textAlign = 'center';
+          const tw = ctx.measureText(dT).width + 6;
           ctx.fillStyle = '#060a0e';
-          ctx.fillRect((minX + maxX)/2 - tw/2, ry - 5, tw, 10);
-          ctx.fillStyle = '#00ff88';
-          ctx.fillText(label, (minX + maxX)/2, ry + 2.5);
-        } else {
-          ctx.fillStyle = '#060a0e';
-          ctx.fillRect(maxX + 6, ry - 5, tw, 10);
-          ctx.fillStyle = '#00ff88';
-          ctx.textAlign = 'left';
-          ctx.fillText(label, maxX + 9, ry + 2.5);
+          if (maxX - minX > tw + 10) {
+            ctx.fillRect((minX + maxX)/2 - tw/2, ry - 5, tw, 10);
+            ctx.fillStyle = '#00ff88';
+            ctx.fillText(dT, (minX + maxX)/2, ry + 2.5);
+          } else {
+            ctx.fillRect(maxX + 6, ry - 5, tw, 10);
+            ctx.fillStyle = '#00ff88';
+            ctx.textAlign = 'left';
+            ctx.fillText(dT, maxX + 9, ry + 2.5);
+          }
         }
       }
     }
+  }
+
+  // Draw stuck (saved) rulers
+  if (appState.savedRulers && appState.savedRulers.length > 0) {
+    appState.savedRulers.forEach((r) => {
+      const ch = appState.channels[r.chIndex];
+      if (!ch || !ch.visible) return;
+
+      const y = r.chIndex * chH;
+      const x1 = t2x(r.t1, vS, vE, plotW);
+      const x2 = t2x(r.t2, vS, vE, plotW);
+      const minX = Math.max(LEFT_M, Math.min(x1, x2));
+      const maxX = Math.min(LEFT_M + plotW, Math.max(x1, x2));
+      if (maxX > minX) {
+        // Highlight background with channel color tint
+        ctx.fillStyle = ch.color + '15';
+        ctx.fillRect(minX, y, maxX - minX, chH);
+
+        // Draw double-sided arrow ruler
+        const ry = Math.round(y + chH / 2);
+        ctx.strokeStyle = ch.color; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(minX, ry); ctx.lineTo(maxX, ry);
+        // Arrowheads
+        ctx.moveTo(minX + 5, ry - 3); ctx.lineTo(minX, ry); ctx.lineTo(minX + 5, ry + 3);
+        ctx.moveTo(maxX - 5, ry - 3); ctx.lineTo(maxX, ry); ctx.lineTo(maxX - 5, ry + 3);
+        ctx.stroke();
+
+        // Duration text
+        const dt = Math.abs(r.t2 - r.t1);
+        const dT = dt < 1 ? (dt * 1000).toFixed(0) + ' us'
+                 : dt < 1000 ? dt.toFixed(2) + ' ms'
+                 : (dt / 1000).toFixed(3) + ' s';
+        
+        ctx.font = '700 8px JetBrains Mono, monospace';
+        ctx.textAlign = 'center';
+        const tw = ctx.measureText(dT).width + 6;
+        ctx.fillStyle = '#060a0e';
+        if (maxX - minX > tw + 10) {
+          ctx.fillRect((minX + maxX)/2 - tw/2, ry - 5, tw, 10);
+          ctx.fillStyle = ch.color;
+          ctx.fillText(dT, (minX + maxX)/2, ry + 2.5);
+        } else {
+          ctx.fillRect(maxX + 6, ry - 5, tw, 10);
+          ctx.fillStyle = ch.color;
+          ctx.textAlign = 'left';
+          ctx.fillText(dT, maxX + 9, ry + 2.5);
+        }
+      }
+    });
   }
   // Measurement cursors
   if (ren.cursor1T !== null) drawMeasCursor(ctx, t2x(ren.cursor1T,vS,vE,plotW), plotH, '#ffffff', '1');
@@ -772,8 +810,40 @@ function bindCanvasEvents() {
     const t=x2t(x, ren._viewStart, ren._viewEnd, c.clientWidth-LEFT_M-RIGHT_M);
     showCursorTip(t, e.clientX, e.clientY, hoveredIdx);
   });
-  c.addEventListener('mouseup',    () => { ren._dragging=false; ren._selectingRegion=false; c.style.cursor='crosshair'; });
+  c.addEventListener('mouseup',    () => {
+    if (ren._selectingRegion) {
+      const plotH = c.clientHeight - TIME_H;
+      const chH = plotH / appState.channels.length;
+      const chIndex = Math.floor((ren._dragY !== undefined ? ren._dragY : 20) / chH);
+      const dt = Math.abs(ren.cursor2T - ren.cursor1T);
+      if (chIndex >= 0 && chIndex < appState.channels.length && dt > 1) {
+        appState.savedRulers.push({
+          chIndex: chIndex,
+          t1: ren.cursor1T,
+          t2: ren.cursor2T
+        });
+      }
+      ren.cursor1T = null;
+      ren.cursor2T = null;
+    }
+    ren._dragging=false; ren._selectingRegion=false; c.style.cursor='crosshair';
+  });
   c.addEventListener('mouseleave', () => {
+    if (ren._selectingRegion) {
+      const plotH = c.clientHeight - TIME_H;
+      const chH = plotH / appState.channels.length;
+      const chIndex = Math.floor((ren._dragY !== undefined ? ren._dragY : 20) / chH);
+      const dt = Math.abs(ren.cursor2T - ren.cursor1T);
+      if (chIndex >= 0 && chIndex < appState.channels.length && dt > 1) {
+        appState.savedRulers.push({
+          chIndex: chIndex,
+          t1: ren.cursor1T,
+          t2: ren.cursor2T
+        });
+      }
+      ren.cursor1T = null;
+      ren.cursor2T = null;
+    }
     ren._dragging=false; ren._selectingRegion=false; ren.hoverX=null; c.style.cursor='default';
     appState.channels.forEach(ch => ch.highlighted = false);
     document.getElementById('cursor-tip').classList.add('hidden');
@@ -1071,8 +1141,14 @@ function setupControls() {
     store.timestamps.length=0;
     for(let ch=0;ch<10;ch++)store.voltages[ch].length=0;
     ren.cursor1T=null; ren.cursor2T=null; ren.following=true;
+    appState.savedRulers = [];
     document.getElementById('no-data-overlay').classList.remove('hidden');
     updateSidebarValues(); updateStatusBar();
+  });
+
+  // Clear Rulers
+  document.getElementById('btn-clear-rulers').addEventListener('click',()=>{
+    appState.savedRulers = [];
   });
 
   // Export PNG
