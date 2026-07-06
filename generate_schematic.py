@@ -60,6 +60,31 @@ def draw_gnd(c, x, y):
     c.line(x - 6, y - 11, x + 6, y - 11)
     c.line(x - 2, y - 14, x + 2, y - 14)
 
+def draw_opamp(c, x, y, label="MCP6002"):
+    c.setStrokeColor(colors.HexColor("#4db8ff"))
+    c.setLineWidth(1.5)
+    c.setFillColor(colors.HexColor("#0c1118"))
+    p = c.beginPath()
+    p.moveTo(x, y - 25)
+    p.lineTo(x, y + 25)
+    p.lineTo(x + 40, y)
+    p.close()
+    c.drawPath(p, fill=1, stroke=1)
+    c.setFont("Helvetica-Bold", 8)
+    c.setFillColor(colors.HexColor("#e0eaf5"))
+    c.drawString(x + 3, y + 10, "+")
+    c.drawString(x + 3, y - 14, "-")
+    c.setStrokeColor(colors.HexColor("#4db8ff"))
+    c.line(x - 15, y + 12, x, y + 12)
+    c.line(x - 15, y - 12, x, y - 12)
+    c.line(x + 40, y, x + 55, y)
+    c.line(x - 15, y - 12, x - 15, y - 30)
+    c.line(x - 15, y - 30, x + 48, y - 30)
+    c.line(x + 48, y - 30, x + 48, y)
+    c.setFont("Helvetica-Bold", 7)
+    c.setFillColor(colors.HexColor("#4db8ff"))
+    c.drawCentredString(x + 18, y - 4, label)
+
 def generate_pdf():
     pdf_path = "/Users/noorzoolhilmi/Desktop/vseq/schematic.pdf"
     pagesize = landscape(A4)
@@ -168,18 +193,18 @@ def generate_pdf():
     c.drawString(stage_x - 10, probe_y + 10, "PROBE TIP (-30V..+30V)")
 
     # R1 Resistor
-    draw_resistor(c, stage_x + 40, probe_y, horizontal=True, label="R1 (Input) 100k")
+    draw_resistor(c, stage_x + 40, probe_y, horizontal=True, label="R1 (Input) 1M")
 
     # Node Vx
     vx_x = stage_x + 95
-    c.line(vx_x, probe_y, vx_x + 100, probe_y)
+    c.line(vx_x, probe_y, vx_x + 120, probe_y) # Line to Op-Amp (+)
     c.setFillColor(colors.HexColor("#00ff88"))
     c.circle(vx_x + 30, probe_y, 3, fill=1, stroke=0)
     c.circle(vx_x + 70, probe_y, 3, fill=1, stroke=0)
 
     # R2 Resistor pointing UP to 3.3V Bias
     r2_node = vx_x + 30
-    draw_resistor(c, r2_node, probe_y + 55, horizontal=False, label="R2 (Bias) 10k")
+    draw_resistor(c, r2_node, probe_y + 55, horizontal=False, label="R2 (Bias) 100k")
     c.setStrokeColor(colors.HexColor("#ff5555"))
     c.line(r2_node - 8, probe_y + 55, r2_node + 8, probe_y + 55)
     c.setFillColor(colors.HexColor("#ff5555"))
@@ -187,7 +212,7 @@ def generate_pdf():
     c.drawString(r2_node + 12, probe_y + 52, "+3.3V VREF")
 
     # R3 Resistor pointing DOWN to GND
-    draw_resistor(c, r2_node, probe_y, horizontal=False, label="R3 (GND) 12k")
+    draw_resistor(c, r2_node, probe_y, horizontal=False, label="R3 (GND) 120k")
     draw_gnd(c, r2_node, probe_y - 55)
 
     # Zener Protection clamp
@@ -195,12 +220,20 @@ def generate_pdf():
     draw_zener(c, z_node, probe_y, label="Zener 3.3V Clamp")
     draw_gnd(c, z_node, probe_y - 45)
 
+    # Draw Op-Amp Buffer
+    op_x = vx_x + 120
+    draw_opamp(c, op_x, probe_y - 12, label="MCP6002")
+
+    # Output line from Op-Amp to ADC pin marker
+    c.setStrokeColor(colors.HexColor("#4db8ff"))
+    c.line(op_x + 55, probe_y - 12, op_x + 75, probe_y - 12)
+
     # Output to STM32 Node
-    out_x = vx_x + 100
+    out_x = op_x + 75
     c.setFillColor(colors.HexColor("#4db8ff"))
-    c.circle(out_x, probe_y, 4, fill=1, stroke=0)
+    c.circle(out_x, probe_y - 12, 4, fill=1, stroke=0)
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(out_x - 10, probe_y + 10, "TO ADC PIN (PA0-PA7, PB0-PB1)")
+    c.drawString(out_x - 10, probe_y + 2, "TO ADC PIN (PA0-PA7, PB0-PB1)")
 
     # 4. Connection Mapping Table (Bottom Left)
     tbl_x, tbl_y = 60, 90
@@ -222,16 +255,16 @@ def generate_pdf():
 
     # Table Rows
     table_data = [
-        ("CH0", "PA0", "VCC_12V", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH1", "PA1", "VCC_5V", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH2", "PA2", "VCC_3V3", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH3", "PA3", "TRIGGER", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH4", "PA4", "VRM_CORE", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH5", "PA5", "VRAM", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH6", "PA6", "V_FAN", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH7", "PA7", "VDDCI", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH8", "PB0", "PGOOD", "100 kOhm", "10 kOhm", "12 kOhm"),
-        ("CH9", "PB1", "VSOC", "100 kOhm", "10 kOhm", "12 kOhm")
+        ("CH0", "PA0", "VCC_12V", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH1", "PA1", "VCC_5V", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH2", "PA2", "VCC_3V3", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH3", "PA3", "TRIGGER", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH4", "PA4", "VRM_CORE", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH5", "PA5", "VRAM", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH6", "PA6", "V_FAN", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH7", "PA7", "VDDCI", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH8", "PB0", "PGOOD", "1 MOhm", "100 kOhm", "120 kOhm"),
+        ("CH9", "PB1", "VSOC", "1 MOhm", "100 kOhm", "120 kOhm")
     ]
 
     c.setFont("Helvetica", 8)
