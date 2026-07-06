@@ -515,8 +515,6 @@ function rendRender() {
     ctx.setLineDash([]);
   }
   // Active temporary selection ruler (while dragging/selecting)
-  const nCh = appState.channels.length;
-  const chH = plotH / nCh;
   if (ren.cursor1T !== null && ren.cursor2T !== null) {
     const x1 = t2x(ren.cursor1T, vS, vE, plotW);
     const x2 = t2x(ren.cursor2T, vS, vE, plotW);
