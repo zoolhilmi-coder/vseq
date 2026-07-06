@@ -319,16 +319,16 @@ body{display:grid;grid-template-rows:var(--toolbar-h) 1fr var(--bottom-h)}
 const CHANNEL_COLORS = ['#ff6b6b','#ff9f40','#ffd23f','#5cdb7f','#4db8ff',
                          '#c77dff','#ff79c6','#a8f040','#40e0d0','#7b8cff'];
 const DEFAULT_CHANNELS = [
-  {name:'VCC_12V', vMin:0, vMax:14,  threshold:11.0},
-  {name:'VCC_5V',  vMin:0, vMax:6,   threshold:4.75},
-  {name:'VCC_3V3', vMin:0, vMax:4,   threshold:3.0},
-  {name:'TRIGGER', vMin:0, vMax:2.5, threshold:1.0},
-  {name:'VRM_CORE',vMin:0, vMax:1.5, threshold:0.85},
-  {name:'VRAM',    vMin:0, vMax:1.8, threshold:1.2},
-  {name:'V_FAN',   vMin:0, vMax:14,  threshold:5.0},
-  {name:'VDDCI',   vMin:0, vMax:1.5, threshold:0.75},
-  {name:'PGOOD',   vMin:0, vMax:4,   threshold:2.5},
-  {name:'VSOC',    vMin:0, vMax:1.2, threshold:0.65},
+  {name:'VCC_12V', vMin:-30, vMax:30,  threshold:1.5},
+  {name:'VCC_5V',  vMin:-30, vMax:30,  threshold:1.5},
+  {name:'VCC_3V3', vMin:-30, vMax:30,  threshold:1.5},
+  {name:'TRIGGER', vMin:-30, vMax:30,  threshold:1.5},
+  {name:'VRM_CORE',vMin:-30, vMax:30,  threshold:1.5},
+  {name:'VRAM',    vMin:-30, vMax:30,  threshold:1.5},
+  {name:'V_FAN',   vMin:-30, vMax:30,  threshold:1.5},
+  {name:'VDDCI',   vMin:-30, vMax:30,  threshold:1.5},
+  {name:'PGOOD',   vMin:-30, vMax:30,  threshold:1.5},
+  {name:'VSOC',    vMin:-30, vMax:30,  threshold:1.5},
 ];
 // Simulated GPU boot sequence: [targetV, riseAt_ms, riseDuration_ms]
 const SEQUENCE = [

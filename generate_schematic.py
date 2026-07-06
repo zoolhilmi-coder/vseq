@@ -94,7 +94,7 @@ def generate_pdf():
     c.drawString(40, height - 52, "VSeq — 10-CHANNEL VOLTAGE SEQUENCER SCHEMATIC")
     c.setFillColor(colors.HexColor("#6e8099"))
     c.setFont("Helvetica", 9)
-    c.drawString(40, height - 64, "Platform: STM32F103C8T6 (Blue Pill)  |  ADC Resolution: 12-Bit (0-3.3V Native Limit)")
+    c.drawString(40, height - 64, "Platform: STM32F103C8T6 (Blue Pill)  |  Bipolar Input Range: -30V to +30V Level Shifter (E12 Resistors)")
 
     # 2. STM32 Blue Pill Board Block (Right Side)
     mcu_x, mcu_y = 520, 90
@@ -114,16 +114,16 @@ def generate_pdf():
 
     # Pin Markers inside MCU block
     pins = [
-        ("PA0 (ADC0)", "CH0 - 12V Rail"),
-        ("PA1 (ADC1)", "CH1 - 5V Rail"),
-        ("PA2 (ADC2)", "CH2 - 3.3V Rail"),
-        ("PA3 (ADC3)", "CH3 - TRIGGER"),
-        ("PA4 (ADC4)", "CH4 - VRM_CORE"),
-        ("PA5 (ADC5)", "CH5 - VRAM"),
-        ("PA6 (ADC6)", "CH6 - V_FAN"),
-        ("PA7 (ADC7)", "CH7 - VDDCI"),
-        ("PB0 (ADC8)", "CH8 - PGOOD"),
-        ("PB1 (ADC9)", "CH9 - VSOC")
+        ("PA0 (ADC0)", "CH0 - VCC_12V (±30V)"),
+        ("PA1 (ADC1)", "CH1 - VCC_5V (±30V)"),
+        ("PA2 (ADC2)", "CH2 - VCC_3V3 (±30V)"),
+        ("PA3 (ADC3)", "CH3 - TRIGGER (±30V)"),
+        ("PA4 (ADC4)", "CH4 - VRM_CORE (±30V)"),
+        ("PA5 (ADC5)", "CH5 - VRAM (±30V)"),
+        ("PA6 (ADC6)", "CH6 - V_FAN (±30V)"),
+        ("PA7 (ADC7)", "CH7 - VDDCI (±30V)"),
+        ("PB0 (ADC8)", "CH8 - PGOOD (±30V)"),
+        ("PB1 (ADC9)", "CH9 - VSOC (±30V)")
     ]
 
     c.setFont("Helvetica-Bold", 9)
@@ -155,7 +155,7 @@ def generate_pdf():
     stage_x = 60
     c.setFillColor(colors.HexColor("#e0eaf5"))
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(stage_x, 460, "TYPICAL INPUT STAGE PROTECTION & SCALING")
+    c.drawString(stage_x, 460, "BIPOLAR LEVEL SHIFTER (-30V TO +30V INPUT)")
 
     # Probe Tip
     probe_y = 390
@@ -165,39 +165,42 @@ def generate_pdf():
     c.setFillColor(colors.HexColor("#ffd23f"))
     c.circle(stage_x, probe_y, 4, fill=1, stroke=1)
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(stage_x - 10, probe_y + 10, "PROBE TIP")
+    c.drawString(stage_x - 10, probe_y + 10, "PROBE TIP (-30V..+30V)")
 
-    # Series Resistor
-    draw_resistor(c, stage_x + 40, probe_y, horizontal=True, label="R_prot 100 Ohm")
-
-    # Node after R_prot
-    node_x = stage_x + 95
-    c.line(node_x, probe_y, node_x + 60, probe_y)
-    c.setFillColor(colors.HexColor("#00ff88"))
-    c.circle(node_x + 30, probe_y, 3, fill=1, stroke=0)
-
-    # Zener Protection
-    draw_zener(c, node_x + 30, probe_y, label="Zener 3.3V")
-    draw_gnd(c, node_x + 30, probe_y - 45)
-
-    # Voltage Divider Node
-    div_x = node_x + 60
     # R1 Resistor
-    draw_resistor(c, div_x, probe_y, horizontal=True, label="R1 (eg: 39k)")
-    
-    # R2 Resistor pointing down
-    r2_node = div_x + 55
-    c.circle(r2_node, probe_y, 3, fill=1, stroke=0)
-    c.line(r2_node, probe_y, r2_node + 60, probe_y) # line out to MCU
-    draw_resistor(c, r2_node, probe_y, horizontal=False, label="R2 (eg: 12k)")
+    draw_resistor(c, stage_x + 40, probe_y, horizontal=True, label="R1 (Input) 100k")
+
+    # Node Vx
+    vx_x = stage_x + 95
+    c.line(vx_x, probe_y, vx_x + 100, probe_y)
+    c.setFillColor(colors.HexColor("#00ff88"))
+    c.circle(vx_x + 30, probe_y, 3, fill=1, stroke=0)
+    c.circle(vx_x + 70, probe_y, 3, fill=1, stroke=0)
+
+    # R2 Resistor pointing UP to 3.3V Bias
+    r2_node = vx_x + 30
+    draw_resistor(c, r2_node, probe_y + 55, horizontal=False, label="R2 (Bias) 10k")
+    c.setStrokeColor(colors.HexColor("#ff5555"))
+    c.line(r2_node - 8, probe_y + 55, r2_node + 8, probe_y + 55)
+    c.setFillColor(colors.HexColor("#ff5555"))
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(r2_node + 12, probe_y + 52, "+3.3V VREF")
+
+    # R3 Resistor pointing DOWN to GND
+    draw_resistor(c, r2_node, probe_y, horizontal=False, label="R3 (GND) 12k")
     draw_gnd(c, r2_node, probe_y - 55)
 
+    # Zener Protection clamp
+    z_node = vx_x + 70
+    draw_zener(c, z_node, probe_y, label="Zener 3.3V Clamp")
+    draw_gnd(c, z_node, probe_y - 45)
+
     # Output to STM32 Node
-    out_x = r2_node + 60
+    out_x = vx_x + 100
     c.setFillColor(colors.HexColor("#4db8ff"))
     c.circle(out_x, probe_y, 4, fill=1, stroke=0)
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(out_x - 30, probe_y + 10, "TO ADC PIN")
+    c.drawString(out_x - 10, probe_y + 10, "TO ADC PIN (PA0-PA7, PB0-PB1)")
 
     # 4. Connection Mapping Table (Bottom Left)
     tbl_x, tbl_y = 60, 90
@@ -213,22 +216,22 @@ def generate_pdf():
     c.drawString(tbl_x + 10, tbl_y + 225, "VSeq CH")
     c.drawString(tbl_x + 70, tbl_y + 225, "Pin")
     c.drawString(tbl_x + 130, tbl_y + 225, "Signal / Rail")
-    c.drawString(tbl_x + 220, tbl_y + 225, "R1 (Top)")
-    c.drawString(tbl_x + 290, tbl_y + 225, "R2 (GND)")
-    c.drawString(tbl_x + 350, tbl_y + 225, "Max V")
+    c.drawString(tbl_x + 220, tbl_y + 225, "R1 (Input)")
+    c.drawString(tbl_x + 290, tbl_y + 225, "R2 (Bias)")
+    c.drawString(tbl_x + 350, tbl_y + 225, "R3 (Gnd)")
 
     # Table Rows
     table_data = [
-        ("CH0", "PA0", "VCC_12V", "39 kOhm", "12 kOhm", "14.0 V"),
-        ("CH1", "PA1", "VCC_5V", "20 kOhm", "22 kOhm", "6.3 V"),
-        ("CH2", "PA2", "VCC_3V3", "Direct (0R)", "None", "3.3 V"),
-        ("CH3", "PA3", "TRIGGER", "Direct (0R)", "None", "3.3 V"),
-        ("CH4", "PA4", "VRM_CORE", "Direct (0R)", "None", "3.3 V"),
-        ("CH5", "PA5", "VRAM", "Direct (0R)", "None", "3.3 V"),
-        ("CH6", "PA6", "V_FAN", "39 kOhm", "12 kOhm", "14.0 V"),
-        ("CH7", "PA7", "VDDCI", "Direct (0R)", "None", "3.3 V"),
-        ("CH8", "PB0", "PGOOD", "Direct (0R)", "None", "3.3 V"),
-        ("CH9", "PB1", "VSOC", "Direct (0R)", "None", "3.3 V")
+        ("CH0", "PA0", "VCC_12V", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH1", "PA1", "VCC_5V", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH2", "PA2", "VCC_3V3", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH3", "PA3", "TRIGGER", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH4", "PA4", "VRM_CORE", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH5", "PA5", "VRAM", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH6", "PA6", "V_FAN", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH7", "PA7", "VDDCI", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH8", "PB0", "PGOOD", "100 kOhm", "10 kOhm", "12 kOhm"),
+        ("CH9", "PB1", "VSOC", "100 kOhm", "10 kOhm", "12 kOhm")
     ]
 
     c.setFont("Helvetica", 8)

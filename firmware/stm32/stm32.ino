@@ -41,20 +41,12 @@ const int ADC_PINS[10] = {
   PB1  // CH9 - A9 (VSOC direct)
 };
 
-// Voltage scale factors (hardware voltage divider ratios)
-// Ratio = (R1 + R2) / R2
-const float SCALE_FACTORS[10] = {
-  4.25f,  // CH0 — 12V rail  (R1=39k, R2=12k)
-  1.65f,  // CH1 — 5V rail   (R1=20k, R2=22k)
-  1.00f,  // CH2 — 3.3V rail (direct)
-  1.00f,  // CH3 — TRIGGER   (direct)
-  1.00f,  // CH4 — VRM_CORE  (direct)
-  1.00f,  // CH5 — VRAM      (direct)
-  4.25f,  // CH6 — V_FAN     (R1=39k, R2=12k, adjust if rail is 12V)
-  1.00f,  // CH7 — VDDCI     (direct)
-  1.00f,  // CH8 — PGOOD     (direct)
-  1.00f   // CH9 — VSOC      (direct)
-};
+// Voltage mapping coefficients for y = m * x + c (to map -30V..+30V input to 0..3.3V ADC pin)
+// With E12 resistors: R1 (Input) = 100k, R2 (Bias to 3.3V) = 10k, R3 (to GND) = 12k
+// Vin = Vx * (1 + R1/R2 + R1/R3) - V_BIAS * (R1/R2)
+// Vin = Vx * 19.3333f - 33.0f
+const float CAL_M[10] = {19.3333f, 19.3333f, 19.3333f, 19.3333f, 19.3333f, 19.3333f, 19.3333f, 19.3333f, 19.3333f, 19.3333f};
+const float CAL_C[10] = {-33.0000f, -33.0000f, -33.0000f, -33.0000f, -33.0000f, -33.0000f, -33.0000f, -33.0000f, -33.0000f, -33.0000f};
 
 bool running = false;
 unsigned long sampleIntervalUs = 1000; // default 1000us (1kHz)
@@ -117,7 +109,8 @@ void loop() {
     // Read and print each channel
     for (int i = 0; i < 10; i++) {
       int raw = analogRead(ADC_PINS[i]);
-      float voltage = ((float)raw / 4095.0f) * VREF * SCALE_FACTORS[i];
+      float vx = ((float)raw / 4095.0f) * VREF;
+      float voltage = vx * CAL_M[i] + CAL_C[i];
       Serial.print(",");
       Serial.print(voltage, 4);
     }
