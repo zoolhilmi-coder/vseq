@@ -28,7 +28,7 @@ def create_kicad_project():
     
     # We will build the S-expression string
     sexp = []
-    sexp.append('(kicad_schematic (version 20211123) (generator eeschema)')
+    sexp.append('(kicad_sch (version 20230121) (generator eeschema)')
     sexp.append(f'  (uuid "{generate_uuid()}")')
     sexp.append('  (paper "A3")')
     sexp.append('  (title_block')
@@ -289,7 +289,7 @@ def create_kicad_project():
         # Print PCB alias name as text next to connector
         sexp.append(f'  (label "{ch_names[i]}" (at 33.02 {py:.2f} 0) (effects (font (size 1.27 1.27)) (justify left)))')
 
-    sexp.append(')') # End kicad_schematic
+    sexp.append(')') # End kicad_sch
 
     with open(sch_path, "w") as f:
         f.write("\n".join(sexp))
@@ -307,7 +307,17 @@ def create_kicad_project():
     with open(pcb_path, "w") as f:
         f.write(pcb_content)
 
-    print("Successfully generated KiCad CAD project at", project_dir)
+    # 4. Copy schematic.pdf into kicad_project if available
+    import shutil
+    pdf_source = "/Users/noorzoolhilmi/Desktop/vseq/schematic.pdf"
+    if os.path.exists(pdf_source):
+        shutil.copy2(pdf_source, os.path.join(project_dir, "schematic.pdf"))
+
+    # 5. Re-package kicad_project.zip
+    zip_target = "/Users/noorzoolhilmi/Desktop/vseq/kicad_project"
+    shutil.make_archive(zip_target, 'zip', "/Users/noorzoolhilmi/Desktop/vseq", "kicad_project")
+
+    print("Successfully generated KiCad CAD project and kicad_project.zip at", project_dir)
 
 if __name__ == "__main__":
     create_kicad_project()
