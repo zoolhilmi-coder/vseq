@@ -296,12 +296,36 @@ def create_kicad_project():
     
     # 3. Simple empty board file (vseq.kicad_pcb) so the project is fully complete
     pcb_path = os.path.join(project_dir, "vseq.kicad_pcb")
-    pcb_content = f"""(kicad_pcb (version 20211014) (generator pcbnew)
-  (uuid "{generate_uuid()}")
+    pcb_content = """(kicad_pcb (version 20221018) (generator pcbnew)
+  (general
+    (thickness 1.6)
+  )
   (paper "A4")
   (title_block
     (title "VSeq Bipolar 10ch Sequencer PCB")
     (company "Antigravity")
+  )
+  (layers
+    (0 "F.Cu" signal)
+    (31 "B.Cu" signal)
+    (32 "B.Adhes" user "B.Adhesive")
+    (33 "F.Adhes" user "F.Adhesive")
+    (34 "B.Paste" user)
+    (35 "F.Paste" user)
+    (36 "B.SilkS" user "B.Silkscreen")
+    (37 "F.SilkS" user "F.Silkscreen")
+    (38 "B.Mask" user)
+    (39 "F.Mask" user)
+    (40 "Dwgs.User" user "User.Drawings")
+    (41 "Cmts.User" user "User.Comments")
+    (42 "Eco1.User" user "User.Eco1")
+    (43 "Eco2.User" user "User.Eco2")
+    (44 "Edge.Cuts" user)
+    (45 "Margin" user)
+    (46 "B.CrtYd" user "B.Courtyard")
+    (47 "F.CrtYd" user "F.Courtyard")
+    (48 "B.Fab" user)
+    (49 "F.Fab" user)
   )
 )"""
     with open(pcb_path, "w") as f:
