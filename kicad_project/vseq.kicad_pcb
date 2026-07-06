@@ -1,0 +1,8 @@
+(kicad_pcb (version 20211014) (generator pcbnew)
+  (uuid "bb45e9bc-04f9-46c0-94ff-1cdf6f04f2fd")
+  (paper "A4")
+  (title_block
+    (title "VSeq Bipolar 10ch Sequencer PCB")
+    (company "Antigravity")
+  )
+)

@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "version": 1
+  },
+  "project": {
+    "back_annotated_footprints": [],
+    "back_annotated_net_names": [],
+    "back_annotated_pads": []
+  }
+}
