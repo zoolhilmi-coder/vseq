@@ -158,7 +158,7 @@ def create_kicad_project():
         # Wire from R1 out to Vx node
         vx_x = 76.2
         sexp.append(f'  (wire (pts (xy 66.04 {y:.2f}) (xy {vx_x:.2f} {y:.2f})) (stroke (width 0)) (uuid "{generate_uuid()}"))')
-        sexp.append(f'  (junction (at {vx_x:.2f} {y:.2f}) (stroke (width 0)) (uuid "{generate_uuid()}"))')
+        sexp.append(f'  (junction (at {vx_x:.2f} {y:.2f}) (uuid "{generate_uuid()}"))')
 
         # 3. Resistor R2 (100k) - Vertical, going UP to +3.3V
         # Centered at x=76.2, y=y-12.7. Orientation 90 (vertical)
@@ -215,7 +215,7 @@ def create_kicad_project():
         # Wire Vx to Zener Cathode
         sexp.append(f'  (wire (pts (xy {vx_x:.2f} {y:.2f}) (xy 88.90 {y:.2f})) (stroke (width 0)) (uuid "{generate_uuid()}"))')
         sexp.append(f'  (wire (pts (xy 88.90 {y:.2f}) (xy 88.90 {y+8.89:.2f})) (stroke (width 0)) (uuid "{generate_uuid()}"))')
-        sexp.append(f'  (junction (at 88.90 {y:.2f}) (stroke (width 0)) (uuid "{generate_uuid()}"))')
+        sexp.append(f'  (junction (at 88.90 {y:.2f}) (uuid "{generate_uuid()}"))')
         # GND power port below Zener Anode
         sexp.append(f'  (symbol (lib_id "power:GND") (at 88.90 {y+17.78:.2f} 0) (unit 1)')
         sexp.append(f'    (uuid "{generate_uuid()}")')
@@ -249,7 +249,7 @@ def create_kicad_project():
 
         # Output label line and PCB Net label
         sexp.append(f'  (wire (pts (xy 124.46 {y+2.54:.2f}) (xy 134.62 {y+2.54:.2f})) (stroke (width 0)) (uuid "{generate_uuid()}"))')
-        sexp.append(f'  (junction (at 124.46 {y+2.54:.2f}) (stroke (width 0)) (uuid "{generate_uuid()}"))')
+        sexp.append(f'  (junction (at 124.46 {y+2.54:.2f}) (uuid "{generate_uuid()}"))')
         # Place Net label cth: CH0_ADC
         sexp.append(f'  (label "CH{i}_ADC" (at 134.62 {y+2.54:.2f} 0) (effects (font (size 1.27 1.27)) (justify left)))')
 

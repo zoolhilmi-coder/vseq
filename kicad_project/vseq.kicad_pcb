@@ -1,5 +1,5 @@
 (kicad_pcb (version 20211014) (generator pcbnew)
-  (uuid "066410f7-e0ba-41ac-a597-37fdaed644b8")
+  (uuid "ca9c18e9-4413-4628-b978-c841accbebd3")
   (paper "A4")
   (title_block
     (title "VSeq Bipolar 10ch Sequencer PCB")
