@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VSeq — Voltage Sequence Analyzer</title>
+  <meta name="description" content="10-channel voltage sequence analyzer for GPU, motherboard, PCB power rail debugging. Logic analyzer style display.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+/* ═══════════════════════════════════════════════════════
+   VSeq Design System — Dark Oscilloscope Theme
+═══════════════════════════════════════════════════════ */
+:root {
+  --bg-base:    #060a0e;
+  --bg-surface: #0c1118;
+  --bg-panel:   #101820;
+  --bg-raised:  #162030;
+  --bg-input:   #1a2535;
+  --bg-hover:   #1e2d40;
+  --accent:     #00ff88;
+  --accent-dim: rgba(0,255,136,0.14);
+  --accent-glow:rgba(0,255,136,0.4);
+  --text-pri:   #e0eaf5;
+  --text-sec:   #6e8099;
+  --text-muted: #38485a;
+  --border:     rgba(255,255,255,0.07);
+  --border-hi:  rgba(255,255,255,0.14);
+  --danger:  #ff5555;
+  --warning: #ffb347;
+  --toolbar-h: 48px;
+  --bottom-h:  36px;
+  --sidebar-w: 215px;
+  --ch0:#ff6b6b; --ch1:#ff9f40; --ch2:#ffd23f; --ch3:#5cdb7f; --ch4:#4db8ff;
+  --ch5:#c77dff; --ch6:#ff79c6; --ch7:#a8f040; --ch8:#40e0d0; --ch9:#7b8cff;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-base);color:var(--text-pri);
+  font-family:'Inter',system-ui,sans-serif;font-size:13px;-webkit-font-smoothing:antialiased}
+body{display:grid;grid-template-rows:var(--toolbar-h) 1fr var(--bottom-h)}
+.main-layout{display:grid;grid-template-columns:var(--sidebar-w) 1fr;overflow:hidden}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:6px;padding:0 12px;background:var(--bg-surface);
+  border-bottom:1px solid var(--border);position:relative;z-index:10}
+.toolbar-brand{display:flex;align-items:center;gap:10px;padding-right:14px;
+  border-right:1px solid var(--border);margin-right:6px}
+.brand-icon{width:30px;height:30px;background:linear-gradient(135deg,#00ff88,#00c4ff);
+  border-radius:4px;display:flex;align-items:center;justify-content:center;color:#060a0e;
+  flex-shrink:0;box-shadow:0 0 14px rgba(0,255,136,0.45);font-size:16px}
+.brand-text{display:flex;flex-direction:column;line-height:1.1}
+.brand-name{font-size:15px;font-weight:700;letter-spacing:0.06em;
+  background:linear-gradient(90deg,#00ff88,#00c4ff);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text}
+.brand-sub{font-size:9px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase}
+.toolbar-controls{display:flex;align-items:center;gap:4px;flex:1}
+.toolbar-sep{width:1px;height:22px;background:var(--border);margin:0 4px}
+.toolbar-status{display:flex;align-items:center;gap:10px;padding-left:14px;border-left:1px solid var(--border);margin-left:6px}
+.status-badge{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;
+  font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:0.08em;
+  border:1px solid transparent;transition:all 0.3s}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.status-idle{color:var(--text-muted);border-color:var(--border)}
+.status-demo{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-dim)}
+.status-demo .status-dot,.status-running .status-dot{animation:pdot 1s ease-in-out infinite}
+.status-running{color:#ff5555;border-color:rgba(255,85,85,0.2);background:rgba(255,85,85,0.1)}
+.status-connected{color:#4db8ff;border-color:rgba(77,184,255,0.2);background:rgba(77,184,255,0.1)}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.6)}}
+.status-stats{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-sec)}
+.stats-sep{opacity:0.3}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--border);
+  border-radius:4px;background:var(--bg-raised);color:var(--text-sec);font-family:'Inter',sans-serif;
+  font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap;line-height:1}
+.btn:hover{background:var(--bg-hover);border-color:var(--border-hi);color:var(--text-pri)}
+.btn:active{transform:scale(0.97)}
+.btn-demo{color:var(--text-sec)}
+.btn-demo.active{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-dim);
+  box-shadow:0 0 12px rgba(0,255,136,0.2)}
+.btn-capture{color:#ff5555;border-color:rgba(255,85,85,0.3);background:rgba(255,85,85,0.08)}
+.btn-capture:hover{background:rgba(255,85,85,0.15);border-color:rgba(255,85,85,0.5);color:#ff5555}
+.btn-capture.running{animation:cpulse 1.5s ease-in-out infinite}
+@keyframes cpulse{0%,100%{box-shadow:0 0 6px rgba(255,85,85,0.3)}50%{box-shadow:0 0 18px rgba(255,85,85,0.6)}}
+.cap-dot{width:7px;height:7px;border-radius:50%;background:#ff5555;flex-shrink:0}
+.btn-capture.running .cap-dot{animation:pdot 0.8s ease-in-out infinite}
+.btn-connect{color:#4db8ff;border-color:rgba(77,184,255,0.3);background:rgba(77,184,255,0.05)}
+.btn-connect:hover{background:rgba(77,184,255,0.12);border-color:rgba(77,184,255,0.5)}
+.btn-connect.connected{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-dim)}
+.btn-icon{gap:4px;padding:5px 8px;color:var(--text-muted);font-size:11px}
+.btn-icon:hover{color:var(--text-pri)}
+.btn-arm{padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:0.05em;
+  color:var(--warning);border-color:rgba(255,179,71,0.3);background:rgba(255,179,71,0.08)}
+.btn-arm:hover{background:rgba(255,179,71,0.18);border-color:rgba(255,179,71,0.5)}
+.btn-arm.armed{color:var(--danger);border-color:rgba(255,85,85,0.4);background:rgba(255,85,85,0.12);animation:cpulse 1s infinite}
+
+/* SIDEBAR */
+.sidebar{background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--border)}
+.sidebar-title{font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-muted);text-transform:uppercase}
+.sbr-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:3px;border-radius:3px;display:flex;align-items:center;transition:color 0.15s}
+.sbr-btn:hover{color:var(--text-pri)}
+.channel-list{flex:1;overflow-y:auto;overflow-x:hidden;padding:3px 0}
+.channel-list::-webkit-scrollbar{width:4px}
+.channel-list::-webkit-scrollbar-track{background:transparent}
+.channel-list::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:2px}
+.ch-card{padding:8px 10px;cursor:pointer;border-left:2px solid transparent;transition:background 0.12s,border-color 0.12s}
+.ch-card:hover{background:var(--bg-raised)}
+.ch-card.hidden-ch{opacity:0.3}
+.ch-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.ch-label{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.ch-color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;cursor:pointer;transition:transform 0.15s}
+.ch-color-dot:hover{transform:scale(1.5)}
+.ch-name{font-size:11px;font-weight:500;color:var(--text-pri);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.ch-name-input{font-size:11px;font-weight:500;background:var(--bg-input);border:1px solid var(--border-hi);border-radius:3px;
+  color:var(--text-pri);padding:1px 4px;width:100%;outline:none;font-family:'Inter',sans-serif}
+.ch-name-input:focus{border-color:var(--accent)}
+.ch-vis-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px;border-radius:3px;font-size:11px;line-height:1;transition:color 0.15s;flex-shrink:0}
+.ch-vis-btn:hover{color:var(--text-pri)}
+.ch-value{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;letter-spacing:-0.01em;margin-bottom:4px;transition:color 0.3s}
+.ch-range{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+.ch-range-bar{flex:1;height:2px;background:var(--border);border-radius:1px;position:relative;overflow:hidden}
+.ch-range-fill{position:absolute;left:0;top:0;bottom:0;border-radius:1px;transition:width 0.12s}
+.ch-thr-row{display:flex;align-items:center;gap:4px;margin-top:5px}
+.ch-thr-lbl{font-size:9px;color:var(--text-muted);flex-shrink:0}
+.ch-thr-in{width:48px;font-size:10px;font-family:'JetBrains Mono',monospace;background:var(--bg-input);
+  border:1px solid var(--border);border-radius:3px;color:var(--text-sec);padding:2px 4px;outline:none;text-align:right}
+.ch-thr-in:focus{border-color:var(--border-hi)}
+.ch-thr-unit{font-size:9px;color:var(--text-muted)}
+
+/* TIMEBASE */
+.tb-panel{padding:10px;border-top:1px solid var(--border);background:var(--bg-base)}
+.tb-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tb-label{font-size:9px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);text-transform:uppercase}
+.tb-follow{font-size:10px;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(0,255,136,0.2);
+  border-radius:4px;padding:2px 7px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s}
+.tb-follow:hover{background:rgba(0,255,136,0.25)}
+.tb-follow.inactive{color:var(--text-muted);background:var(--bg-raised);border-color:var(--border)}
+.tb-ctrl{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tb-btn{width:28px;height:28px;background:var(--bg-raised);border:1px solid var(--border);border-radius:4px;
+  color:var(--text-pri);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s}
+.tb-btn:hover{background:var(--bg-hover);border-color:var(--border-hi)}
+.tb-btn:active{transform:scale(0.93)}
+.tb-display{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--accent);letter-spacing:0.03em}
+.zoom-slider{width:100%;-webkit-appearance:none;height:3px;background:var(--bg-raised);border-radius:2px;outline:none;cursor:pointer;margin-bottom:6px}
+.zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--accent);cursor:pointer;box-shadow:0 0 6px var(--accent-glow);transition:box-shadow 0.15s}
+.zoom-slider::-webkit-slider-thumb:hover{box-shadow:0 0 12px var(--accent-glow)}
+.tb-hints{font-size:9px;color:var(--text-muted);text-align:center;line-height:1.5}
+
+/* WAVEFORM */
+.waveform-wrap{position:relative;overflow:hidden;background:var(--bg-base)}
+#waveform-canvas{display:block;cursor:crosshair;position:absolute;inset:0}
+.cursor-tip{position:absolute;pointer-events:none;background:rgba(12,17,24,0.92);border:1px solid var(--border-hi);
+  border-radius:6px;padding:8px 10px;min-width:130px;backdrop-filter:blur(8px);z-index:20;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+.cursor-tip.hidden{display:none}
+.ct-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);margin-bottom:5px;font-weight:700}
+.ct-divider{height:1px;background:var(--border);margin-bottom:5px}
+.ct-values{display:flex;flex-direction:column;gap:2px}
+.ct-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;font-family:'JetBrains Mono',monospace}
+.ct-ch-name{font-size:9px}
+.ct-v{font-weight:700}
+.no-data-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;pointer-events:none;color:var(--text-muted);transition:opacity 0.4s}
+.no-data-overlay.hidden{opacity:0}
+.ndo-icon{opacity:0.5;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.ndo-title{font-size:18px;font-weight:600;color:var(--text-sec)}
+.ndo-sub{font-size:12px;color:var(--text-muted);text-align:center}
+.ndo-sub strong{color:var(--accent);font-weight:600}
+
+/* BOTTOM BAR */
+.bottom-bar{display:flex;align-items:center;background:var(--bg-surface);border-top:1px solid var(--border);overflow:hidden;font-size:11px}
+.bb-section{display:flex;align-items:center;gap:8px;padding:0 12px;height:100%;border-right:1px solid var(--border)}
+.bb-section:last-child{border-right:none;flex:1;justify-content:flex-end}
+.bb-label{font-size:9px;font-weight:700;letter-spacing:0.1em;color:var(--text-muted);text-transform:uppercase;flex-shrink:0}
+.bb-select{background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-sec);
+  font-family:'Inter',sans-serif;font-size:11px;padding:3px 6px;outline:none;cursor:pointer}
+.bb-select option{background:var(--bg-panel)}
+.bb-at{color:var(--text-muted);font-size:10px}
+.bb-input{width:52px;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;
+  color:var(--text-pri);font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 5px;text-align:right;outline:none}
+.bb-input:focus{border-color:var(--accent)}
+.bb-unit{color:var(--text-muted);font-size:10px}
+.trig-state{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.08em;
+  color:var(--text-muted);padding:2px 7px;border-radius:3px;border:1px solid var(--border)}
+.trig-state.armed{color:var(--danger);border-color:rgba(255,85,85,0.4);background:rgba(255,85,85,0.1);animation:pdot 0.8s infinite}
+.trig-state.triggered{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-dim)}
+.delta-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-sec)}
+.info-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted)}
+.hw-badge{padding:2px 7px;border-radius:3px;background:var(--accent-dim);color:var(--accent);
+  border:1px solid rgba(0,255,136,0.2);font-size:9px;font-weight:700;letter-spacing:0.06em}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:3px}
+.hidden{display:none!important}
+  </style>
+</head>
+<body>
+
+<!-- ═══ TOOLBAR ═══ -->
+<header class="toolbar">
+  <div class="toolbar-brand">
+    <div class="brand-icon">⚡</div>
+    <div class="brand-text">
+      <span class="brand-name">VSeq</span>
+      <span class="brand-sub">Voltage Analyzer</span>
+    </div>
+  </div>
+  <div class="toolbar-controls">
+    <button id="btn-demo" class="btn btn-demo active">◈ Demo Mode</button>
+    <div class="toolbar-sep"></div>
+    <button id="btn-capture" class="btn btn-capture">
+      <span class="cap-dot"></span>
+      <span id="capture-label">▶ Capture</span>
+    </button>
+    <button id="btn-connect" class="btn btn-connect">⊕ <span id="connect-label">Connect USB</span></button>
+    <div class="toolbar-sep"></div>
+    <button id="btn-reset" class="btn btn-icon">↺ Reset</button>
+    <button id="btn-export-png" class="btn btn-icon">⬇ PNG</button>
+    <button id="btn-export-csv" class="btn btn-icon">⬇ CSV</button>
+  </div>
+  <div class="toolbar-status">
+    <div id="status-badge" class="status-badge status-idle">
+      <span class="status-dot"></span>
+      <span id="status-text">IDLE</span>
+    </div>
+    <div class="status-stats">
+      <span id="sample-rate-display">0 Sa/s</span>
+      <span class="stats-sep">·</span>
+      <span id="elapsed-display">0.0s</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ MAIN LAYOUT ═══ -->
+<div class="main-layout">
+  <aside class="sidebar">
+    <div class="sidebar-hdr">
+      <span class="sidebar-title">CHANNELS</span>
+      <button id="btn-all-vis" class="sbr-btn" title="Toggle all">👁</button>
+    </div>
+    <div id="channel-list" class="channel-list"></div>
+    <div class="tb-panel">
+      <div class="tb-row">
+        <span class="tb-label">TIME/div</span>
+        <button id="btn-follow" class="tb-follow">⟫ Follow</button>
+      </div>
+      <div class="tb-ctrl">
+        <button class="tb-btn" id="btn-zoom-in">+</button>
+        <span id="tb-display" class="tb-display">500ms</span>
+        <button class="tb-btn" id="btn-zoom-out">−</button>
+      </div>
+      <input type="range" id="zoom-slider" class="zoom-slider" min="0" max="100" step="0.5" value="45">
+      <div class="tb-hints">Scroll: zoom · Drag: pan · Dbl-click: follow</div>
+    </div>
+  </aside>
+
+  <div class="waveform-wrap" id="waveform-wrap">
+    <canvas id="waveform-canvas"></canvas>
+    <div id="cursor-tip" class="cursor-tip hidden">
+      <div class="ct-time" id="ct-time">t = 0.000ms</div>
+      <div class="ct-divider"></div>
+      <div id="ct-values" class="ct-values"></div>
+    </div>
+    <div id="no-data-overlay" class="no-data-overlay">
+      <div class="ndo-icon">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+          <rect x="4" y="4" width="44" height="44" rx="4" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+          <polyline points="8,40 18,22 24,30 34,14 44,30" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" fill="none" opacity="0.5"/>
+          <circle cx="38" cy="14" r="7" fill="#00ff88" opacity="0.9"/>
+          <line x1="35" y1="14" x2="41" y2="14" stroke="#060a0e" stroke-width="2"/>
+          <line x1="38" y1="11" x2="38" y2="17" stroke="#060a0e" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="ndo-title">No Data Yet</div>
+      <div class="ndo-sub">Press <strong>Capture</strong> to start, or enable <strong>Demo Mode</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOTTOM BAR ═══ -->
+<footer class="bottom-bar">
+  <div class="bb-section">
+    <span class="bb-label">TRIGGER</span>
+    <select id="trig-ch" class="bb-select"><option value="-1">— Off —</option></select>
+    <select id="trig-edge" class="bb-select">
+      <option value="rising">↑ Rising</option>
+      <option value="falling">↓ Falling</option>
+      <option value="either">↕ Either</option>
+    </select>
+    <span class="bb-at">at</span>
+    <input id="trig-level" type="number" class="bb-input" value="1.00" min="0" max="20" step="0.1">
+    <span class="bb-unit">V</span>
+    <button id="btn-arm" class="btn btn-arm">ARM</button>
+    <span id="trig-state" class="trig-state">STANDBY</span>
+  </div>
+  <div class="bb-section">
+    <span class="bb-label">CURSORS</span>
+    <span id="delta-t" class="delta-val">ΔT: —</span>
+    <span id="delta-v" class="delta-val">ΔV: —</span>
+    <span id="freq-est" class="delta-val">f: —</span>
+  </div>
+  <div class="bb-section">
+    <span id="buf-size" class="info-val">Buf: 0 pts</span>
+    <span id="view-range" class="info-val">View: 500ms</span>
+    <span id="hw-info" class="hw-badge info-val">Demo</span>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   VSeq — All-in-One Script (ES module workaround for file://)
+═══════════════════════════════════════════════════════ */
+
+/* ─── Channel definitions ─── */
+const CHANNEL_COLORS = ['#ff6b6b','#ff9f40','#ffd23f','#5cdb7f','#4db8ff',
+                         '#c77dff','#ff79c6','#a8f040','#40e0d0','#7b8cff'];
+const DEFAULT_CHANNELS = [
+  {name:'VCC_12V', vMin:0, vMax:14,  threshold:11.0},
+  {name:'VCC_5V',  vMin:0, vMax:6,   threshold:4.75},
+  {name:'VCC_3V3', vMin:0, vMax:4,   threshold:3.0},
+  {name:'TRIGGER', vMin:0, vMax:2.5, threshold:1.0},
+  {name:'VRM_CORE',vMin:0, vMax:1.5, threshold:0.85},
+  {name:'VRAM',    vMin:0, vMax:1.8, threshold:1.2},
+  {name:'V_FAN',   vMin:0, vMax:14,  threshold:5.0},
+  {name:'VDDCI',   vMin:0, vMax:1.5, threshold:0.75},
+  {name:'PGOOD',   vMin:0, vMax:4,   threshold:2.5},
+  {name:'VSOC',    vMin:0, vMax:1.2, threshold:0.65},
+];
+// Simulated GPU boot sequence: [targetV, riseAt_ms, riseDuration_ms]
+const SEQUENCE = [
+  [12.00, 15,  8],   // CH0: 12V
+  [ 5.00, 28,  6],   // CH1: 5V
+  [ 3.30, 40,  5],   // CH2: 3.3V
+  [ 1.80, 60,  3],   // CH3: EN_VCORE
+  [ 1.00, 72,  8],   // CH4: VCORE
+  [ 1.35, 92,  5],   // CH5: VRAM
+  [ 0.90,105,  4],   // CH6: VDDCI
+  [ 1.80,112,  4],   // CH7: MVDD
+  [ 3.30,128,  2],   // CH8: PGOOD
+  [ 0.75,145,  6],   // CH9: VSOC
+];
+const CYCLE_MS = 3000;
+
+/* ─── Data Store ─── */
+const MAX_SAMPLES = 200000;
+const store = {
+  timestamps: [],
+  voltages: Array.from({length:10}, () => []),
+};
+
+/* ─── App State ─── */
+const appState = {
+  channels: DEFAULT_CHANNELS.map((d,i) => ({
+    index:i, name:d.name, color:CHANNEL_COLORS[i],
+    visible:true, vMin:d.vMin, vMax:d.vMax,
+    threshold:d.threshold, highlighted:false,
+  })),
+  demoMode:true, capturing:false, connected:false,
+  sampleCount:0, lastBatchTime:0, sampleRate:0,
+};
+
+/* ─── Renderer constants ─── */
+const LEFT_M = 58, RIGHT_M = 82, TIME_H = 34, STRIP_PY = 6;
+
+/* ─── Renderer state ─── */
+const ren = {
+  canvas: null, ctx: null, dpr: 1,
+  viewWindow: 500, viewOffset: 0, following: true,
+  hoverX: null, cursor1T: null, cursor2T: null, cursorMode: 1,
+  _dragging:false, _dragStartX:0, _dragOffset:0,
+  _viewStart:0, _viewEnd:500, _plotW:0, _CH:0,
+};
+
+/* ─── Demo generator state ─── */
+let demoRunning = false;
+let demoStartWall = 0;
+let demoHeadMs = 0;
+let demoRafId = null;
+
+/* ─── Trigger state ─── */
+let trigArmed = false;
+
+/* ════════════════════════════════════════
+   DEMO GENERATOR
+════════════════════════════════════════ */
+function sigmoid(t, riseAt, riseMs) {
+  if (t < riseAt) return 0;
+  const x = (t - riseAt) / riseMs;
+  if (x >= 1) return 1;
+  return x < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2, 3)/2;
+}
+function demoVoltage(chIdx, cycleT) {
+  const [targetV, riseAt, riseMs] = SEQUENCE[chIdx];
+  const level = sigmoid(cycleT, riseAt, riseMs);
+  const v = targetV * level;
+  if (level > 0.02) {
+    const noise  = (Math.random() - 0.5) * 0.008 * targetV;
+    const ripple = Math.sin(cycleT * 0.314) * 0.004 * targetV;
+    return v + noise + ripple;
+  }
+  return Math.random() * 0.008;
+}
+function demoTick() {
+  if (!demoRunning) return;
+  const wallElapsed = performance.now() - demoStartWall;
+  const timestamps = [], voltages = Array.from({length:10}, () => []);
+  while (demoHeadMs < wallElapsed) {
+    const t = demoHeadMs, cycleT = t % CYCLE_MS;
+    timestamps.push(t);
+    for (let ch = 0; ch < 10; ch++) voltages[ch].push(demoVoltage(ch, cycleT));
+    demoHeadMs += 1;
+  }
+  if (timestamps.length > 0) ingestData(timestamps, voltages);
+  demoRafId = requestAnimationFrame(demoTick);
+}
+function demoStart() {
+  if (demoRunning) return;
+  demoRunning = true; demoStartWall = performance.now(); demoHeadMs = 0;
+  demoTick();
+}
+function demoStop() {
+  demoRunning = false;
+  if (demoRafId) { cancelAnimationFrame(demoRafId); demoRafId = null; }
+}
+function demoReset() { demoStop(); demoHeadMs = 0; demoStartWall = 0; }
+
+/* ════════════════════════════════════════
+   DATA INGESTION
+════════════════════════════════════════ */
+function ingestData(timestamps, voltages) {
+  const n = timestamps.length;
+  if (n === 0) return;
+  for (let i = 0; i < n; i++) {
+    store.timestamps.push(timestamps[i]);
+    for (let ch = 0; ch < 10; ch++) store.voltages[ch].push(voltages[ch][i] ?? 0);
+  }
+  if (store.timestamps.length > MAX_SAMPLES) {
+    const excess = store.timestamps.length - MAX_SAMPLES;
+    store.timestamps.splice(0, excess);
+    for (let ch = 0; ch < 10; ch++) store.voltages[ch].splice(0, excess);
+  }
+  appState.sampleCount += n;
+  const now = performance.now();
+  if (now - appState.lastBatchTime >= 500) {
+    const el = (now - appState.lastBatchTime) / 1000;
+    appState.sampleRate = Math.round(appState.sampleCount / el);
+    appState.sampleCount = 0; appState.lastBatchTime = now;
+  }
+  updateSidebarValues();
+  updateStatusBar();
+}
+
+/* ════════════════════════════════════════
+   CANVAS RENDERER
+════════════════════════════════════════ */
+function rendInit() {
+  ren.canvas = document.getElementById('waveform-canvas');
+  ren.ctx = ren.canvas.getContext('2d', {alpha:false});
+  ren.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  rendResize();
+  bindCanvasEvents();
+}
+function rendResize() {
+  const p = ren.canvas.parentElement;
+  const w = p.clientWidth, h = p.clientHeight;
+  ren.canvas.width  = Math.round(w * ren.dpr);
+  ren.canvas.height = Math.round(h * ren.dpr);
+  ren.canvas.style.width  = w + 'px';
+  ren.canvas.style.height = h + 'px';
+}
+function rendRender() {
+  const ctx = ren.ctx, dpr = ren.dpr;
+  const CW = ren.canvas.width / dpr, CH = ren.canvas.height / dpr;
+  ctx.save(); ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#060a0e'; ctx.fillRect(0,0,CW,CH);
+  const plotW = CW - LEFT_M - RIGHT_M;
+  const plotH = CH - TIME_H;
+  const nCh = appState.channels.length;
+  const chH = plotH / nCh;
+  // Determine view
+  const latest = store.timestamps.length ? store.timestamps[store.timestamps.length-1] : 0;
+  let vS, vE;
+  if (ren.following) {
+    vE = Math.max(latest, ren.viewWindow); vS = vE - ren.viewWindow;
+  } else {
+    vS = ren.viewOffset; vE = vS + ren.viewWindow;
+  }
+  ren._viewStart = vS; ren._viewEnd = vE; ren._plotW = plotW; ren._CH = CH;
+  // Draw strips
+  for (let i = 0; i < nCh; i++) {
+    drawStrip(ctx, appState.channels[i], store.voltages[i], store.timestamps,
+              i * chH, chH, CW, plotW, vS, vE);
+  }
+  // Strip separators
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for (let i = 1; i < nCh; i++) {
+    const y = Math.round(i * chH) + 0.5;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+  }
+  // Margin borders
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath(); ctx.moveTo(LEFT_M+0.5,0); ctx.lineTo(LEFT_M+0.5,plotH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CW-RIGHT_M+0.5,0); ctx.lineTo(CW-RIGHT_M+0.5,plotH); ctx.stroke();
+  drawTimeAxis(ctx, CW, CH, plotW, vS, vE);
+  // Hover line
+  if (ren.hoverX !== null) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1;
+    ctx.setLineDash([3,5]);
+    ctx.beginPath(); ctx.moveTo(ren.hoverX,0); ctx.lineTo(ren.hoverX,plotH); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Highlight region between cursors
+  if (ren.cursor1T !== null && ren.cursor2T !== null) {
+    const x1 = t2x(ren.cursor1T, vS, vE, plotW);
+    const x2 = t2x(ren.cursor2T, vS, vE, plotW);
+    const minX = Math.max(LEFT_M, Math.min(x1, x2));
+    const maxX = Math.min(LEFT_M + plotW, Math.max(x1, x2));
+    if (maxX > minX) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.fillRect(minX, 0, maxX - minX, plotH);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      const stripH = 8;
+      for (let sy = 0; sy < plotH; sy += stripH * 2) ctx.fillRect(minX, sy, maxX - minX, stripH);
+
+      // Draw visual time ruler (pembaris ukur masa)
+      const dt = Math.abs(ren.cursor2T - ren.cursor1T);
+      const dT = dt < 1 ? (dt * 1000).toFixed(0) + ' us'
+               : dt < 1000 ? dt.toFixed(2) + ' ms'
+               : (dt / 1000).toFixed(3) + ' s';
+      const hz = dt > 0 ? (1000 / dt).toFixed(1) + ' Hz' : '';
+      const label = hz ? `${dT} (${hz})` : dT;
+      
+      const ry = 20; // Y position for the ruler
+      ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(minX, ry); ctx.lineTo(maxX, ry);
+      // Ticks at ends
+      ctx.moveTo(minX, ry - 5); ctx.lineTo(minX, ry + 5);
+      ctx.moveTo(maxX, ry - 5); ctx.lineTo(maxX, ry + 5);
+      ctx.stroke();
+
+      // Text label in the middle of ruler
+      ctx.font = '700 9px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(label).width + 6;
+      if (maxX - minX > tw + 10) {
+        ctx.fillStyle = '#060a0e';
+        ctx.fillRect((minX + maxX)/2 - tw/2, ry - 6, tw, 12);
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText(label, (minX + maxX)/2, ry + 3);
+      } else {
+        ctx.fillStyle = '#060a0e';
+        ctx.fillRect(maxX + 4, ry - 6, tw, 12);
+        ctx.fillStyle = '#00ff88';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, maxX + 7, ry + 3);
+      }
+    }
+  }
+  // Measurement cursors
+  if (ren.cursor1T !== null) drawMeasCursor(ctx, t2x(ren.cursor1T,vS,vE,plotW), plotH, '#ffffff', '1');
+  if (ren.cursor2T !== null) drawMeasCursor(ctx, t2x(ren.cursor2T,vS,vE,plotW), plotH, '#ffd23f', '2');
+  ctx.restore();
+}
+
+function t2x(t, vS, vE, plotW) { return LEFT_M + ((t-vS)/(vE-vS)) * plotW; }
+function x2t(x, vS, vE, plotW) { return vS + ((x-LEFT_M)/plotW) * (vE-vS); }
+function bisectL(arr, val) {
+  let lo=0, hi=arr.length;
+  while(lo<hi){const m=(lo+hi)>>>1; if(arr[m]<val)lo=m+1;else hi=m;}
+  return lo;
+}
+function bisectR(arr, val) {
+  let lo=0, hi=arr.length;
+  while(lo<hi){const m=(lo+hi)>>>1; if(arr[m]<=val)lo=m+1;else hi=m;}
+  return lo;
+}
+
+function drawStrip(ctx, ch, samples, timestamps, y, h, CW, plotW, vS, vE) {
+  const innerH = h - STRIP_PY*2, innerY = y + STRIP_PY;
+  const vRange = ch.vMax - ch.vMin;
+  const tv = (t) => t2x(t, vS, vE, plotW);
+  const vv = (v) => innerY + innerH - ((Math.max(ch.vMin,Math.min(ch.vMax,v))-ch.vMin)/vRange)*innerH;
+  // Background
+  if (ch.highlighted) { ctx.fillStyle = ch.color+'0a'; ctx.fillRect(LEFT_M+1,y+1,plotW-1,h-2); }
+  // Voltage grid
+  ctx.font = '9px JetBrains Mono,monospace'; ctx.textAlign = 'right';
+  for (let j=0; j<=4; j++) {
+    const gy = innerY + (j/4)*innerH, gv = ch.vMax - (j/4)*vRange;
+    ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=0.5; ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(LEFT_M+1,gy); ctx.lineTo(LEFT_M+plotW,gy); ctx.stroke();
+    ctx.setLineDash([]);
+    if (j===0||j===2||j===4) {
+      ctx.fillStyle='rgba(255,255,255,0.22)';
+      ctx.fillText(gv.toFixed(gv<2?2:1)+'V', LEFT_M-4, gy+3.5);
+    }
+  }
+  // Threshold line
+  if (ch.threshold!==null && ch.threshold>ch.vMin && ch.threshold<ch.vMax) {
+    const ty = vv(ch.threshold);
+    ctx.strokeStyle=ch.color+'55'; ctx.lineWidth=1; ctx.setLineDash([6,5]);
+    ctx.beginPath(); ctx.moveTo(LEFT_M,ty); ctx.lineTo(LEFT_M+plotW,ty); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=ch.color+'80'; ctx.font='9px JetBrains Mono,monospace'; ctx.textAlign='left';
+    ctx.fillText(ch.threshold.toFixed(2)+'V', LEFT_M+4, ty-3);
+  }
+  // Channel label in left margin
+  ctx.fillStyle=ch.color; ctx.font='700 10px Inter,sans-serif'; ctx.textAlign='left';
+  ctx.fillText('CH'+ch.index, 4, y+14);
+  ctx.fillStyle='rgba(255,255,255,0.28)'; ctx.font='10px Inter,sans-serif';
+  ctx.fillText(ch.name.length>7?ch.name.slice(0,7)+'…':ch.name, 4, y+26);
+  // Waveform
+  if (!samples||samples.length===0) {
+    const fy=vv(0); ctx.strokeStyle=ch.color+'30'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(LEFT_M,fy); ctx.lineTo(LEFT_M+plotW,fy); ctx.stroke();
+  } else {
+    const si = Math.max(0, bisectL(timestamps,vS)-1);
+    const ei = Math.min(timestamps.length-1, bisectR(timestamps,vE)+1);
+    if (ei>=si) {
+      // Fill
+      const grad = ctx.createLinearGradient(0,innerY,0,innerY+innerH);
+      grad.addColorStop(0, ch.color+'28'); grad.addColorStop(1, ch.color+'00');
+      ctx.beginPath();
+      let px=tv(timestamps[si]), py=vv(samples[si]);
+      ctx.moveTo(px, vv(0)); ctx.lineTo(px, py);
+      for (let i=si+1; i<=ei; i++) {
+        const nx=tv(timestamps[i]), ny=vv(samples[i]);
+        if (nx-px<0.4&&i<ei) continue;
+        ctx.lineTo(nx,ny); px=nx; py=ny;
+      }
+      ctx.lineTo(tv(timestamps[ei]), vv(0)); ctx.closePath();
+      ctx.fillStyle=grad; ctx.fill();
+      // Line
+      ctx.beginPath();
+      px=tv(timestamps[si]); py=vv(samples[si]); ctx.moveTo(px,py);
+      for (let i=si+1; i<=ei; i++) {
+        const nx=tv(timestamps[i]), ny=vv(samples[i]);
+        if (nx-px<0.4&&i<ei) continue;
+        ctx.lineTo(nx,ny); px=nx;
+      }
+      ctx.strokeStyle=ch.color; ctx.lineWidth=1.8;
+      ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.shadowColor=ch.color; ctx.shadowBlur=5;
+      ctx.stroke(); ctx.shadowBlur=0;
+    }
+  }
+  // Right margin — current value
+  const lastV = samples&&samples.length>0 ? samples[samples.length-1] : null;
+  const valY = y + h/2 + 5;
+  ctx.fillStyle = lastV!==null ? ch.color : 'rgba(255,255,255,0.12)';
+  ctx.font='700 13px JetBrains Mono,monospace'; ctx.textAlign='left';
+  ctx.fillText(lastV!==null?lastV.toFixed(3)+'V':'—', CW-RIGHT_M+8, valY);
+  if (samples&&samples.length>0) {
+    let mn=Infinity, mx=-Infinity;
+    const from=Math.max(0,samples.length-2000);
+    for(let i=from;i<samples.length;i++){if(samples[i]<mn)mn=samples[i];if(samples[i]>mx)mx=samples[i];}
+    ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.font='9px JetBrains Mono,monospace';
+    ctx.fillText('↑'+mx.toFixed(2), CW-RIGHT_M+8, valY+14);
+    ctx.fillText('↓'+mn.toFixed(2), CW-RIGHT_M+8, valY+24);
+  }
+}
+
+function drawTimeAxis(ctx, CW, CH, plotW, vS, vE) {
+  const ay = CH - TIME_H;
+  ctx.fillStyle='#0c1118'; ctx.fillRect(0,ay,CW,TIME_H);
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,ay+0.5); ctx.lineTo(CW,ay+0.5); ctx.stroke();
+  for (let i=0; i<=10; i++) {
+    const frac=i/10, t=vS+frac*(vE-vS), x=LEFT_M+frac*plotW;
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,ay); ctx.lineTo(x,ay+6); ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ay); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.32)'; ctx.font='10px JetBrains Mono,monospace'; ctx.textAlign='center';
+    ctx.fillText(fmtTime(t), x, ay+22);
+  }
+}
+
+function drawMeasCursor(ctx, x, plotH, color, label) {
+  ctx.strokeStyle=color+'cc'; ctx.lineWidth=1.5; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,plotH); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=color; ctx.font='bold 10px JetBrains Mono,monospace'; ctx.textAlign='center';
+  const badge=' C'+label+' ', bW=ctx.measureText(badge).width+4;
+  ctx.fillRect(x-bW/2,4,bW,16);
+  ctx.fillStyle='#060a0e'; ctx.fillText(badge,x,15);
+}
+
+function fmtTime(ms) {
+  if (ms<0) return '-'+fmtTime(-ms);
+  if (ms<1000) return ms.toFixed(0)+'ms';
+  if (ms<10000) return (ms/1000).toFixed(2)+'s';
+  return (ms/1000).toFixed(1)+'s';
+}
+
+function valueAtTime(samples, timestamps, t) {
+  if (!samples||samples.length===0) return null;
+  const idx=bisectL(timestamps,t);
+  if (idx<=0) return samples[0];
+  if (idx>=samples.length) return samples[samples.length-1];
+  const t0=timestamps[idx-1],t1=timestamps[idx],v0=samples[idx-1],v1=samples[idx];
+  return v0 + ((t-t0)/(t1-t0))*(v1-v0);
+}
+
+/* ─── Canvas events ─── */
+function bindCanvasEvents() {
+  const c = ren.canvas;
+  c.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 1.25 : 0.8;
+    ren.viewWindow = Math.max(20, Math.min(60000, ren.viewWindow * factor));
+    if (!ren.following) {
+      const rect=c.getBoundingClientRect(), mx=e.clientX-rect.left;
+      const frac=(mx-LEFT_M)/(c.clientWidth-LEFT_M-RIGHT_M);
+      const pivotT=ren._viewStart+frac*(ren._viewEnd-ren._viewStart);
+      ren.viewOffset=Math.max(0, pivotT-frac*ren.viewWindow);
+    }
+  }, {passive:false});
+  c.addEventListener('mousedown', (e) => {
+    if (e.button === 0) { // Left click: Select region
+      ren._selectingRegion=true;
+      const rect=c.getBoundingClientRect(), x=e.clientX-rect.left;
+      const t=x2t(x,ren._viewStart,ren._viewEnd,c.clientWidth-LEFT_M-RIGHT_M);
+      ren.cursor1T=t; ren.cursor2T=t;
+      ren.following=false;
+    } else if (e.button === 1 || e.button === 2) { // Middle or Right click: Pan
+      ren._dragging=true; ren._dragStartX=e.clientX; ren._dragOffset=ren.viewOffset;
+      ren.following=false; c.style.cursor='grabbing';
+    }
+  });
+  c.addEventListener('mousemove', (e) => {
+    const rect=c.getBoundingClientRect(), x=e.clientX-rect.left, y=e.clientY-rect.top;
+    if (ren._dragging) {
+      const dx=e.clientX-ren._dragStartX;
+      const dT=(dx/(c.clientWidth-LEFT_M-RIGHT_M))*ren.viewWindow;
+      ren.viewOffset=Math.max(0, ren._dragOffset-dT);
+    } else if (ren._selectingRegion) {
+      const t=x2t(x,ren._viewStart,ren._viewEnd,c.clientWidth-LEFT_M-RIGHT_M);
+      ren.cursor2T=t;
+    }
+    ren.hoverX=(x>LEFT_M&&x<c.clientWidth-RIGHT_M)?x:null;
+    const plotH = c.clientHeight - TIME_H;
+    let hoveredIdx = -1;
+    if (y >= 0 && y < plotH && ren.hoverX !== null) {
+      const chH = plotH / appState.channels.length;
+      hoveredIdx = Math.floor(y / chH);
+    }
+    appState.channels.forEach((ch, idx) => ch.highlighted = (idx === hoveredIdx));
+    const t=x2t(x, ren._viewStart, ren._viewEnd, c.clientWidth-LEFT_M-RIGHT_M);
+    showCursorTip(t, e.clientX, e.clientY, hoveredIdx);
+  });
+  c.addEventListener('mouseup',    () => { ren._dragging=false; ren._selectingRegion=false; c.style.cursor='crosshair'; });
+  c.addEventListener('mouseleave', () => {
+    ren._dragging=false; ren._selectingRegion=false; ren.hoverX=null; c.style.cursor='default';
+    appState.channels.forEach(ch => ch.highlighted = false);
+    document.getElementById('cursor-tip').classList.add('hidden');
+  });
+  c.addEventListener('dblclick', () => { ren.following=true; });
+  c.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+}
+
+/* ════════════════════════════════════════
+   RENDER LOOP
+════════════════════════════════════════ */
+function renderLoop() {
+  rendRender();
+  checkTrigger();
+  updateBottomBar();
+  requestAnimationFrame(renderLoop);
+}
+
+/* ════════════════════════════════════════
+   SIDEBAR
+════════════════════════════════════════ */
+function buildSidebar() {
+  const list = document.getElementById('channel-list');
+  list.innerHTML = '';
+  appState.channels.forEach((ch) => {
+    const card = document.createElement('div');
+    card.className='ch-card'; card.id='ch-card-'+ch.index;
+    card.style.borderLeftColor=ch.color;
+    card.innerHTML=`
+      <div class="ch-card-top">
+        <div class="ch-label">
+          <div class="ch-color-dot" id="dot-${ch.index}"
+            style="background:${ch.color};box-shadow:0 0 6px ${ch.color}80"></div>
+          <span class="ch-name" id="name-${ch.index}" title="Double-click to rename">${ch.name}</span>
+        </div>
+        <button class="ch-vis-btn" id="vis-${ch.index}">👁</button>
+      </div>
+      <div class="ch-value" id="val-${ch.index}" style="color:${ch.color}">— V</div>
+      <div class="ch-range">
+        <span>${ch.vMin}V</span>
+        <div class="ch-range-bar">
+          <div class="ch-range-fill" id="fill-${ch.index}" style="background:${ch.color};width:0%"></div>
+        </div>
+        <span>${ch.vMax}V</span>
+      </div>
+      <div class="ch-thr-row">
+        <span class="ch-thr-lbl">Thr:</span>
+        <input class="ch-thr-in" id="thr-${ch.index}" type="number"
+          step="0.05" value="${ch.threshold!==null?ch.threshold.toFixed(2):''}" placeholder="—">
+        <span class="ch-thr-unit">V</span>
+      </div>`;
+    list.appendChild(card);
+    document.getElementById('vis-'+ch.index).addEventListener('click',(e)=>{
+      e.stopPropagation(); ch.visible=!ch.visible; card.classList.toggle('hidden-ch',!ch.visible);
+    });
+    document.getElementById('thr-'+ch.index).addEventListener('input',(e)=>{
+      const v=parseFloat(e.target.value); ch.threshold=isNaN(v)?null:v;
+    });
+    document.getElementById('dot-'+ch.index).addEventListener('click',()=>{
+      const idx=CHANNEL_COLORS.indexOf(ch.color);
+      ch.color=CHANNEL_COLORS[(idx+1)%CHANNEL_COLORS.length];
+      document.getElementById('dot-'+ch.index).style.background=ch.color;
+      document.getElementById('dot-'+ch.index).style.boxShadow='0 0 6px '+ch.color+'80';
+      document.getElementById('val-'+ch.index).style.color=ch.color;
+      document.getElementById('fill-'+ch.index).style.background=ch.color;
+      card.style.borderLeftColor=ch.color;
+    });
+    card.addEventListener('mouseenter',()=>ch.highlighted=true);
+    card.addEventListener('mouseleave',()=>ch.highlighted=false);
+    bindRename(ch);
+  });
+}
+
+function bindRename(ch) {
+  const nameEl=document.getElementById('name-'+ch.index);
+  if (!nameEl) return;
+  nameEl.addEventListener('dblclick',()=>{
+    const inp=document.createElement('input');
+    inp.type='text'; inp.className='ch-name-input'; inp.value=ch.name;
+    nameEl.replaceWith(inp); inp.focus(); inp.select();
+    const commit=()=>{
+      ch.name=inp.value.trim()||ch.name;
+      const span=document.createElement('span');
+      span.id='name-'+ch.index; span.className='ch-name';
+      span.title='Double-click to rename'; span.textContent=ch.name;
+      inp.replaceWith(span); bindRename(ch);
+      populateTrigSelect();
+    };
+    inp.addEventListener('blur',commit);
+    inp.addEventListener('keydown',(ke)=>{ if(ke.key==='Enter')commit(); if(ke.key==='Escape'){inp.value=ch.name;commit();} });
+  });
+}
+
+function updateSidebarValues() {
+  appState.channels.forEach((ch)=>{
+    const s=store.voltages[ch.index];
+    if (!s||s.length===0) return;
+    const v=s[s.length-1], pct=Math.max(0,Math.min(100,((v-ch.vMin)/(ch.vMax-ch.vMin))*100));
+    const ve=document.getElementById('val-'+ch.index), fe=document.getElementById('fill-'+ch.index);
+    if(ve) ve.textContent=v.toFixed(3)+' V';
+    if(fe) fe.style.width=pct.toFixed(1)+'%';
+  });
+}
+
+/* ════════════════════════════════════════
+   STATUS & BOTTOM BAR
+════════════════════════════════════════ */
+function updateStatusBar() {
+  const badge=document.getElementById('status-badge'), text=document.getElementById('status-text');
+  badge.className='status-badge';
+  if(appState.capturing&&appState.connected){badge.classList.add('status-running');text.textContent='LIVE';}
+  else if(appState.capturing&&appState.demoMode){badge.classList.add('status-demo');text.textContent='DEMO';}
+  else if(appState.connected){badge.classList.add('status-connected');text.textContent='USB';}
+  else{badge.classList.add('status-idle');text.textContent='IDLE';}
+  const r=appState.sampleRate;
+  document.getElementById('sample-rate-display').textContent=r>=1000?(r/1000).toFixed(1)+' kSa/s':r+' Sa/s';
+  const lastT=store.timestamps.length?store.timestamps[store.timestamps.length-1]:0;
+  document.getElementById('elapsed-display').textContent=(lastT/1000).toFixed(1)+'s';
+}
+
+function updateBottomBar() {
+  document.getElementById('buf-size').textContent='Buf: '+(store.timestamps.length/1000).toFixed(1)+'k pts';
+  const vw=ren.viewWindow;
+  const fvw=vw>=1000?(vw/1000).toFixed(vw<10000?2:1)+'s':vw.toFixed(0)+'ms';
+  document.getElementById('view-range').textContent='View: '+fvw;
+  document.getElementById('tb-display').textContent=fvw;
+  const logV=Math.log10(Math.max(20,vw)/20)/Math.log10(3000);
+  document.getElementById('zoom-slider').value=(logV*100).toFixed(1);
+  document.getElementById('btn-follow').classList.toggle('inactive',!ren.following);
+  // Cursor deltas
+  const c1=ren.cursor1T, c2=ren.cursor2T;
+  if(c1!==null&&c2!==null){
+    const dt=Math.abs(c2-c1);
+    const dT=dt<1?(dt*1000).toFixed(0)+' μs':dt<1000?dt.toFixed(2)+' ms':(dt/1000).toFixed(3)+' s';
+    document.getElementById('delta-t').textContent='ΔT: '+dT;
+    document.getElementById('freq-est').textContent=dt>0?'f: '+(1000/dt).toFixed(1)+' Hz':'f: —';
+    let dvS=0,dvC=0;
+    appState.channels.forEach(ch=>{
+      if(!ch.visible)return;
+      const v1=valueAtTime(store.voltages[ch.index],store.timestamps,c1);
+      const v2=valueAtTime(store.voltages[ch.index],store.timestamps,c2);
+      if(v1!==null&&v2!==null){dvS+=Math.abs(v2-v1);dvC++;}
+    });
+    document.getElementById('delta-v').textContent=dvC?'ΔV: '+(dvS/dvC).toFixed(3)+' V':'ΔV: —';
+  } else {
+    document.getElementById('delta-t').textContent='ΔT: —';
+    document.getElementById('delta-v').textContent='ΔV: —';
+    document.getElementById('freq-est').textContent='f: —';
+  }
+}
+
+/* ════════════════════════════════════════
+   CURSOR TOOLTIP
+════════════════════════════════════════ */
+function showCursorTip(t, xPx, yPx, hoveredIdx = -1) {
+  const tip=document.getElementById('cursor-tip');
+  if(t===null||t===undefined||!appState.capturing){tip.classList.add('hidden');return;}
+  const tFmt=t<1000?t.toFixed(2)+' ms':(t/1000).toFixed(3)+' s';
+  document.getElementById('ct-time').textContent='t = '+tFmt;
+  const valEl=document.getElementById('ct-values'); valEl.innerHTML='';
+  appState.channels.forEach((ch, idx)=>{
+    if(!ch.visible)return;
+    const v=valueAtTime(store.voltages[ch.index],store.timestamps,t);
+    if(v===null)return;
+    const isHovered = (hoveredIdx === -1 || hoveredIdx === idx);
+    const row=document.createElement('div'); row.className='ct-row';
+    row.style.opacity = isHovered ? '1' : '0.3';
+    if (isHovered && hoveredIdx !== -1) {
+      row.style.background = 'rgba(255,255,255,0.08)';
+      row.style.padding = '2px 4px';
+      row.style.borderRadius = '3px';
+      row.style.margin = '0 -4px';
+    }
+    row.innerHTML=`<span class="ct-ch-name" style="color:${ch.color}">CH${ch.index} ${ch.name.slice(0,6)}</span>
+                   <span class="ct-v" style="color:${ch.color}">${v.toFixed(3)}V</span>`;
+    valEl.appendChild(row);
+  });
+  const wrap=document.getElementById('waveform-wrap'), rect=wrap.getBoundingClientRect();
+  const tipW=155, offX=xPx-rect.left+14, offY=Math.max(4,yPx-rect.top-20);
+  tip.style.left=(offX+tipW+rect.left>window.innerWidth?xPx-rect.left-tipW-12:offX)+'px';
+  tip.style.top=offY+'px';
+  tip.classList.remove('hidden');
+}
+
+/* ════════════════════════════════════════
+   TRIGGER
+════════════════════════════════════════ */
+function populateTrigSelect() {
+  const sel=document.getElementById('trig-ch'), cur=sel.value;
+  sel.innerHTML='<option value="-1">— Off —</option>';
+  appState.channels.forEach(ch=>{
+    const o=document.createElement('option'); o.value=ch.index;
+    o.textContent='CH'+ch.index+' '+ch.name; sel.appendChild(o);
+  });
+  sel.value=cur;
+}
+
+function checkTrigger() {
+  if(!trigArmed||!appState.capturing)return;
+  const chIdx=parseInt(document.getElementById('trig-ch').value);
+  if(chIdx<0)return;
+  const edge=document.getElementById('trig-edge').value;
+  const level=parseFloat(document.getElementById('trig-level').value);
+  const samps=store.voltages[chIdx];
+  if(samps.length<2)return;
+  const len=samps.length, prev=samps[len-2], curr=samps[len-1];
+  let fired=(edge==='rising'&&prev<level&&curr>=level)||
+            (edge==='falling'&&prev>=level&&curr<level)||
+            (edge==='either'&&((prev<level&&curr>=level)||(prev>=level&&curr<level)));
+  if(fired){
+    trigArmed=false;
+    document.getElementById('btn-arm').classList.remove('armed');
+    const st=document.getElementById('trig-state');
+    st.textContent='TRIGGERED'; st.className='trig-state triggered';
+    const trigT=store.timestamps[len-1];
+    ren.following=false; ren.viewOffset=Math.max(0,trigT-ren.viewWindow*0.15);
+  }
+}
+
+/* ════════════════════════════════════════
+   SETUP UI CONTROLS
+════════════════════════════════════════ */
+function setupControls() {
+  // Demo toggle
+  document.getElementById('btn-demo').addEventListener('click',()=>{
+    appState.demoMode=!appState.demoMode;
+    document.getElementById('btn-demo').classList.toggle('active',appState.demoMode);
+    document.getElementById('hw-info').textContent=appState.demoMode?'Demo':'USB';
+    if(!appState.demoMode&&appState.capturing)demoStop();
+    updateStatusBar();
+  });
+
+  // Capture
+  const btnCap=document.getElementById('btn-capture');
+  btnCap.addEventListener('click',()=>{
+    appState.capturing=!appState.capturing;
+    if(appState.capturing){
+      document.getElementById('capture-label').textContent='■ Stop';
+      btnCap.classList.add('running');
+      appState.sampleCount=0; appState.lastBatchTime=performance.now();
+      document.getElementById('no-data-overlay').classList.add('hidden');
+      if(appState.demoMode)demoStart();
+    } else {
+      document.getElementById('capture-label').textContent='▶ Capture';
+      btnCap.classList.remove('running');
+      demoStop();
+    }
+    updateStatusBar();
+  });
+
+  // USB Connect (Web Serial)
+  document.getElementById('btn-connect').addEventListener('click',async()=>{
+    if(!('serial' in navigator)){alert('Web Serial API requires Chrome 89+ or Edge 89+.\n\nUse Demo Mode instead.');return;}
+    try{
+      const port=await navigator.serial.requestPort();
+      await port.open({baudRate:921600,dataBits:8,stopBits:1,parity:'none'});
+      appState.connected=true; appState.demoMode=false;
+      document.getElementById('btn-demo').classList.remove('active');
+      document.getElementById('connect-label').textContent='Disconnect';
+      document.getElementById('btn-connect').classList.add('connected');
+      document.getElementById('hw-info').textContent='USB';
+      updateStatusBar();
+      // Start reading
+      const dec=new TextDecoder(); let buf='';
+      const reader=port.readable.getReader();
+      (async()=>{
+        try{while(true){
+          const{value,done}=await reader.read(); if(done)break;
+          buf+=dec.decode(value,{stream:true});
+          const lines=buf.split('\n'); buf=lines.pop();
+          const tss=[],vs=Array.from({length:10},()=>[]);
+          for(const line of lines){
+            const p=line.trim().split(','); if(p.length<2)continue;
+            const t=parseFloat(p[0]); if(isNaN(t))continue;
+            tss.push(t);
+            for(let ch=0;ch<10;ch++) vs[ch].push(parseFloat(p[ch+1])||0);
+          }
+          if(tss.length)ingestData(tss,vs);
+        }}catch(_){}
+      })();
+    }catch(e){if(e.name!=='NotFoundError')alert('Connect failed: '+e.message);}
+  });
+
+  // Reset
+  document.getElementById('btn-reset').addEventListener('click',()=>{
+    if(appState.capturing){
+      appState.capturing=false;
+      document.getElementById('capture-label').textContent='▶ Capture';
+      document.getElementById('btn-capture').classList.remove('running');
+      demoStop();
+    }
+    demoReset();
+    store.timestamps.length=0;
+    for(let ch=0;ch<10;ch++)store.voltages[ch].length=0;
+    ren.cursor1T=null; ren.cursor2T=null; ren.following=true;
+    document.getElementById('no-data-overlay').classList.remove('hidden');
+    updateSidebarValues(); updateStatusBar();
+  });
+
+  // Export PNG
+  document.getElementById('btn-export-png').addEventListener('click',()=>{
+    const url=ren.canvas.toDataURL('image/png');
+    const a=document.createElement('a'); a.href=url; a.download='vseq_'+Date.now()+'.png'; a.click();
+  });
+
+  // Export CSV
+  document.getElementById('btn-export-csv').addEventListener('click',()=>{
+    if(!store.timestamps.length){alert('No data to export.');return;}
+    const hdr=['time_ms',...appState.channels.map(c=>c.name)].join(',');
+    const rows=store.timestamps.map((t,i)=>
+      [t.toFixed(3),...store.voltages.map(v=>(v[i]??0).toFixed(4))].join(','));
+    const b=new Blob([[hdr,...rows].join('\n')],{type:'text/csv'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download='vseq_'+Date.now()+'.csv'; a.click();
+  });
+
+  // Zoom
+  document.getElementById('zoom-slider').addEventListener('input',(e)=>{
+    ren.viewWindow=Math.round(20*Math.pow(3000,parseFloat(e.target.value)/100));
+  });
+  document.getElementById('btn-zoom-in').addEventListener('click',()=>{ren.viewWindow=Math.max(20,ren.viewWindow*0.7);});
+  document.getElementById('btn-zoom-out').addEventListener('click',()=>{ren.viewWindow=Math.min(60000,ren.viewWindow*1.4);});
+  document.getElementById('btn-follow').addEventListener('click',()=>{ren.following=true;});
+  document.getElementById('btn-all-vis').addEventListener('click',()=>{
+    const any=appState.channels.some(c=>!c.visible);
+    appState.channels.forEach(c=>{c.visible=any;document.getElementById('ch-card-'+c.index).classList.toggle('hidden-ch',!c.visible);});
+  });
+
+  // Trigger ARM
+  document.getElementById('btn-arm').addEventListener('click',()=>{
+    trigArmed=!trigArmed;
+    document.getElementById('btn-arm').classList.toggle('armed',trigArmed);
+    const st=document.getElementById('trig-state');
+    st.textContent=trigArmed?'ARMED':'STANDBY';
+    st.className='trig-state'+(trigArmed?' armed':'');
+  });
+}
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+function init() {
+  rendInit();
+  buildSidebar();
+  populateTrigSelect();
+  setupControls();
+  // Resize observer
+  new ResizeObserver(()=>rendResize()).observe(document.getElementById('waveform-wrap'));
+  // Start render loop
+  requestAnimationFrame(renderLoop);
+  // Auto-start demo
+  setTimeout(()=>document.getElementById('btn-capture').click(), 400);
+}
+
+init();
+</script>
+</body>
+</html>
