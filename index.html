@@ -732,6 +732,24 @@ function drawTimeAxis(ctx, CW, CH, plotW, vS, vE) {
     ctx.fillStyle='rgba(255,255,255,0.32)'; ctx.font='10px JetBrains Mono,monospace'; ctx.textAlign='center';
     ctx.fillText(fmtTime(t), x, ay+22);
   }
+
+  // Draw timeline scrollbar
+  const latest = store.timestamps.length ? store.timestamps[store.timestamps.length-1] : 0;
+  if (latest > (vE - vS)) {
+    const sbY = ay + 2;
+    const sbH = 3;
+    const thumbW = Math.max(20, ((vE - vS) / latest) * plotW);
+    const maxOffset = latest - (vE - vS);
+    const thumbX = LEFT_M + (vS / maxOffset) * (plotW - thumbW);
+
+    // Track
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fillRect(LEFT_M, sbY, plotW, sbH);
+
+    // Thumb
+    ctx.fillStyle = 'rgba(0, 255, 136, 0.45)';
+    ctx.fillRect(thumbX, sbY, thumbW, sbH);
+  }
 }
 
 function drawMeasCursor(ctx, x, plotH, color, label) {
@@ -764,6 +782,17 @@ function bindCanvasEvents() {
   const c = ren.canvas;
   c.addEventListener('wheel', (e) => {
     e.preventDefault();
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      const plotW = c.clientWidth - LEFT_M - RIGHT_M;
+      const latest = store.timestamps.length ? store.timestamps[store.timestamps.length-1] : 0;
+      if (latest > ren.viewWindow) {
+        const maxOffset = latest - ren.viewWindow;
+        const tShift = (e.deltaX / plotW) * ren.viewWindow;
+        ren.viewOffset = Math.max(0, Math.min(maxOffset, ren.viewOffset + tShift));
+        ren.following = false;
+      }
+      return;
+    }
     const factor = e.deltaY > 0 ? 1.25 : 0.8;
     ren.viewWindow = Math.max(20, Math.min(60000, ren.viewWindow * factor));
     if (!ren.following) {
@@ -774,10 +803,18 @@ function bindCanvasEvents() {
     }
   }, {passive:false});
   c.addEventListener('mousedown', (e) => {
+    const rect=c.getBoundingClientRect(), x=e.clientX-rect.left, y=e.clientY-rect.top;
+    const plotH = c.clientHeight - TIME_H;
+    if (y >= plotH && y <= plotH + 12 && x >= LEFT_M && x <= c.clientWidth - RIGHT_M) {
+      ren._draggingScrollbar = true;
+      ren._dragScrollStartX = x;
+      ren._dragScrollStartOffset = ren.viewOffset;
+      ren.following = false;
+      return;
+    }
     if (e.button === 0) { // Left click: Select region
       ren._selectingRegion=true;
-      const rect=c.getBoundingClientRect(), x=e.clientX-rect.left, y=e.clientY-rect.top;
-      const t=x2t(x,ren._viewStart,ren._viewEnd,c.clientWidth-LEFT_M-RIGHT_M);
+      const t = x2t(x,ren._viewStart,ren._viewEnd,c.clientWidth-LEFT_M-RIGHT_M);
       ren.cursor1T=t; ren.cursor2T=t;
       ren._dragY=y;
       ren.following=false;
@@ -788,6 +825,16 @@ function bindCanvasEvents() {
   });
   c.addEventListener('mousemove', (e) => {
     const rect=c.getBoundingClientRect(), x=e.clientX-rect.left, y=e.clientY-rect.top;
+    if (ren._draggingScrollbar) {
+      const plotW = c.clientWidth - LEFT_M - RIGHT_M;
+      const latest = store.timestamps.length ? store.timestamps[store.timestamps.length-1] : 0;
+      const thumbW = Math.max(20, (ren.viewWindow / latest) * plotW);
+      const maxOffset = latest - ren.viewWindow;
+      const dx = x - ren._dragScrollStartX;
+      const dtShift = (dx / (plotW - thumbW)) * maxOffset;
+      ren.viewOffset = Math.max(0, Math.min(maxOffset, ren._dragScrollStartOffset + dtShift));
+      return;
+    }
     if (ren._dragging) {
       const dx=e.clientX-ren._dragStartX;
       const dT=(dx/(c.clientWidth-LEFT_M-RIGHT_M))*ren.viewWindow;
@@ -830,7 +877,7 @@ function bindCanvasEvents() {
       ren.cursor1T = null;
       ren.cursor2T = null;
     }
-    ren._dragging=false; ren._selectingRegion=false; c.style.cursor='crosshair';
+    ren._dragging=false; ren._selectingRegion=false; ren._draggingScrollbar=false; c.style.cursor='crosshair';
   });
   c.addEventListener('mouseleave', () => {
     if (ren._selectingRegion) {
@@ -854,7 +901,7 @@ function bindCanvasEvents() {
       ren.cursor1T = null;
       ren.cursor2T = null;
     }
-    ren._dragging=false; ren._selectingRegion=false; ren.hoverX=null; c.style.cursor='default';
+    ren._dragging=false; ren._selectingRegion=false; ren._draggingScrollbar=false; ren.hoverX=null; c.style.cursor='default';
     appState.channels.forEach(ch => ch.highlighted = false);
     document.getElementById('cursor-tip').classList.add('hidden');
   });
