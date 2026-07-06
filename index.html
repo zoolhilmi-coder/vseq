@@ -525,38 +525,57 @@ function rendRender() {
       const stripH = 8;
       for (let sy = 0; sy < plotH; sy += stripH * 2) ctx.fillRect(minX, sy, maxX - minX, stripH);
 
-      // Draw visual time ruler (pembaris ukur masa)
+      // Draw visual time ruler (pembaris ukur masa) for each visible channel
       const dt = Math.abs(ren.cursor2T - ren.cursor1T);
       const dT = dt < 1 ? (dt * 1000).toFixed(0) + ' us'
                : dt < 1000 ? dt.toFixed(2) + ' ms'
                : (dt / 1000).toFixed(3) + ' s';
       const hz = dt > 0 ? (1000 / dt).toFixed(1) + ' Hz' : '';
       const label = hz ? `${dT} (${hz})` : dT;
-      
-      const ry = 20; // Y position for the ruler
-      ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(minX, ry); ctx.lineTo(maxX, ry);
-      // Ticks at ends
-      ctx.moveTo(minX, ry - 5); ctx.lineTo(minX, ry + 5);
-      ctx.moveTo(maxX, ry - 5); ctx.lineTo(maxX, ry + 5);
-      ctx.stroke();
 
-      // Text label in the middle of ruler
-      ctx.font = '700 9px JetBrains Mono, monospace';
-      ctx.textAlign = 'center';
-      const tw = ctx.measureText(label).width + 6;
-      if (maxX - minX > tw + 10) {
-        ctx.fillStyle = '#060a0e';
-        ctx.fillRect((minX + maxX)/2 - tw/2, ry - 6, tw, 12);
-        ctx.fillStyle = '#00ff88';
-        ctx.fillText(label, (minX + maxX)/2, ry + 3);
-      } else {
-        ctx.fillStyle = '#060a0e';
-        ctx.fillRect(maxX + 4, ry - 6, tw, 12);
-        ctx.fillStyle = '#00ff88';
-        ctx.textAlign = 'left';
-        ctx.fillText(label, maxX + 7, ry + 3);
+      const nCh = appState.channels.length;
+      const chH = plotH / nCh;
+
+      for (let i = 0; i < nCh; i++) {
+        const ch = appState.channels[i];
+        if (!ch.visible) continue;
+
+        // Vertically center the ruler inside the channel strip
+        const ry = Math.round(i * chH + chH / 2);
+
+        ctx.strokeStyle = 'rgba(0, 255, 136, 0.45)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Horizontal line
+        ctx.moveTo(minX, ry); ctx.lineTo(maxX, ry);
+        
+        // Left arrowhead (<)
+        ctx.moveTo(minX + 5, ry - 3);
+        ctx.lineTo(minX, ry);
+        ctx.lineTo(minX + 5, ry + 3);
+        
+        // Right arrowhead (>)
+        ctx.moveTo(maxX - 5, ry - 3);
+        ctx.lineTo(maxX, ry);
+        ctx.lineTo(maxX - 5, ry + 3);
+        
+        ctx.stroke();
+
+        // Text label in the middle of each ruler
+        ctx.font = '700 8px JetBrains Mono, monospace';
+        ctx.textAlign = 'center';
+        const tw = ctx.measureText(label).width + 6;
+        if (maxX - minX > tw + 10) {
+          ctx.fillStyle = '#060a0e';
+          ctx.fillRect((minX + maxX)/2 - tw/2, ry - 5, tw, 10);
+          ctx.fillStyle = '#00ff88';
+          ctx.fillText(label, (minX + maxX)/2, ry + 2.5);
+        } else {
+          ctx.fillStyle = '#060a0e';
+          ctx.fillRect(maxX + 6, ry - 5, tw, 10);
+          ctx.fillStyle = '#00ff88';
+          ctx.textAlign = 'left';
+          ctx.fillText(label, maxX + 9, ry + 2.5);
+        }
       }
     }
   }
@@ -721,9 +740,10 @@ function bindCanvasEvents() {
   c.addEventListener('mousedown', (e) => {
     if (e.button === 0) { // Left click: Select region
       ren._selectingRegion=true;
-      const rect=c.getBoundingClientRect(), x=e.clientX-rect.left;
+      const rect=c.getBoundingClientRect(), x=e.clientX-rect.left, y=e.clientY-rect.top;
       const t=x2t(x,ren._viewStart,ren._viewEnd,c.clientWidth-LEFT_M-RIGHT_M);
       ren.cursor1T=t; ren.cursor2T=t;
+      ren._dragY=y;
       ren.following=false;
     } else if (e.button === 1 || e.button === 2) { // Middle or Right click: Pan
       ren._dragging=true; ren._dragStartX=e.clientX; ren._dragOffset=ren.viewOffset;
@@ -739,6 +759,7 @@ function bindCanvasEvents() {
     } else if (ren._selectingRegion) {
       const t=x2t(x,ren._viewStart,ren._viewEnd,c.clientWidth-LEFT_M-RIGHT_M);
       ren.cursor2T=t;
+      ren._dragY=y;
     }
     ren.hoverX=(x>LEFT_M&&x<c.clientWidth-RIGHT_M)?x:null;
     const plotH = c.clientHeight - TIME_H;
