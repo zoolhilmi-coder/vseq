@@ -362,6 +362,7 @@ const appState = {
   demoMode:true, capturing:false, connected:false,
   sampleCount:0, lastBatchTime:0, sampleRate:0,
   savedRulers: [],
+  pinnedVoltages: [],
 };
 
 /* ─── Renderer constants ─── */
@@ -615,6 +616,53 @@ function rendRender() {
       }
     });
   }
+  // Draw pinned voltages (annotations)
+  if (appState.pinnedVoltages && appState.pinnedVoltages.length > 0) {
+    appState.pinnedVoltages.forEach((pin) => {
+      const ch = appState.channels[pin.chIndex];
+      if (!ch || !ch.visible) return;
+
+      const x = t2x(pin.t, vS, vE, plotW);
+      if (x < LEFT_M || x > LEFT_M + plotW) return; // off-screen
+
+      const yOffset = pin.chIndex * chH;
+      const innerH = chH - STRIP_PY*2, innerY = yOffset + STRIP_PY;
+      const vRange = ch.vMax - ch.vMin;
+      const y = innerY + innerH - ((Math.max(ch.vMin,Math.min(ch.vMax,pin.v))-ch.vMin)/vRange)*innerH;
+
+      // Draw dot on waveform line
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI*2);
+      ctx.fillStyle = ch.color;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Label text
+      const label = pin.v.toFixed(3) + 'V';
+      ctx.font = 'bold 9px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(label).width + 6;
+      const th = 12;
+
+      // Position label slightly above the dot
+      const lx = x;
+      const ly = y - 10;
+
+      // Draw label background card
+      ctx.fillStyle = 'rgba(12, 17, 24, 0.85)';
+      ctx.fillRect(lx - tw/2, ly - th/2 - 2, tw, th);
+      ctx.strokeStyle = ch.color;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lx - tw/2, ly - th/2 - 2, tw, th);
+
+      // Draw label text
+      ctx.fillStyle = ch.color;
+      ctx.fillText(label, lx, ly + th/2 - 3);
+    });
+  }
+
   // Measurement cursors
   if (ren.cursor1T !== null) drawMeasCursor(ctx, t2x(ren.cursor1T,vS,vE,plotW), plotH, '#ffffff', '1');
   if (ren.cursor2T !== null) drawMeasCursor(ctx, t2x(ren.cursor2T,vS,vE,plotW), plotH, '#ffd23f', '2');
@@ -855,24 +903,53 @@ function bindCanvasEvents() {
     const t=x2t(x, ren._viewStart, ren._viewEnd, c.clientWidth-LEFT_M-RIGHT_M);
     showCursorTip(t, e.clientX, e.clientY, hoveredIdx);
   });
-  c.addEventListener('mouseup',    () => {
+  c.addEventListener('mouseup',    (e) => {
+    const rect = c.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
     if (ren._selectingRegion) {
       const plotH = c.clientHeight - TIME_H;
       const chH = plotH / appState.channels.length;
       const chIndex = Math.floor((ren._dragY !== undefined ? ren._dragY : 20) / chH);
       const dt = Math.abs(ren.cursor2T - ren.cursor1T);
-      if (chIndex >= 0 && chIndex < appState.channels.length && dt > 2) {
-        appState.savedRulers.push({
-          chIndex: chIndex,
-          t1: ren.cursor1T,
-          t2: ren.cursor2T
-        });
-        // Auto zoom: selected region occupies 70% of the view width
-        const newVw = dt / 0.7;
-        const centerT = (ren.cursor1T + ren.cursor2T) / 2;
-        ren.viewWindow = Math.max(20, Math.min(60000, newVw));
-        ren.viewOffset = Math.max(0, centerT - ren.viewWindow / 2);
-        ren.following = false;
+      const plotW = c.clientWidth - LEFT_M - RIGHT_M;
+      const startX = t2x(ren.cursor1T, ren._viewStart, ren._viewEnd, plotW);
+      const dragPx = Math.abs(x - startX);
+
+      if (dragPx > 6 && dt > 2) {
+        if (chIndex >= 0 && chIndex < appState.channels.length) {
+          appState.savedRulers.push({
+            chIndex: chIndex,
+            t1: ren.cursor1T,
+            t2: ren.cursor2T
+          });
+          const newVw = dt / 0.7;
+          const centerT = (ren.cursor1T + ren.cursor2T) / 2;
+          ren.viewWindow = Math.max(20, Math.min(60000, newVw));
+          ren.viewOffset = Math.max(0, centerT - ren.viewWindow / 2);
+          ren.following = false;
+        }
+      } else {
+        if (chIndex >= 0 && chIndex < appState.channels.length) {
+          const clickT = x2t(x, ren._viewStart, ren._viewEnd, plotW);
+          const val = valueAtTime(store.voltages[chIndex], store.timestamps, clickT);
+          if (val !== null) {
+            let existingIdx = -1;
+            for (let i = 0; i < appState.pinnedVoltages.length; i++) {
+              const p = appState.pinnedVoltages[i];
+              if (p.chIndex === chIndex) {
+                const px = t2x(p.t, ren._viewStart, ren._viewEnd, plotW);
+                if (Math.abs(px - x) < 12) {
+                  existingIdx = i;
+                  break;
+                }
+              }
+            }
+            if (existingIdx !== -1) {
+              appState.pinnedVoltages.splice(existingIdx, 1);
+            } else {
+              appState.pinnedVoltages.push({ chIndex, t: clickT, v: val });
+            }
+          }
+        }
       }
       ren.cursor1T = null;
       ren.cursor2T = null;
@@ -891,7 +968,6 @@ function bindCanvasEvents() {
           t1: ren.cursor1T,
           t2: ren.cursor2T
         });
-        // Auto zoom
         const newVw = dt / 0.7;
         const centerT = (ren.cursor1T + ren.cursor2T) / 2;
         ren.viewWindow = Math.max(20, Math.min(60000, newVw));
@@ -1199,6 +1275,7 @@ function setupControls() {
     for(let ch=0;ch<10;ch++)store.voltages[ch].length=0;
     ren.cursor1T=null; ren.cursor2T=null; ren.following=true;
     appState.savedRulers = [];
+    appState.pinnedVoltages = [];
     document.getElementById('no-data-overlay').classList.remove('hidden');
     updateSidebarValues(); updateStatusBar();
   });
@@ -1206,6 +1283,7 @@ function setupControls() {
   // Clear Rulers
   document.getElementById('btn-clear-rulers').addEventListener('click',()=>{
     appState.savedRulers = [];
+    appState.pinnedVoltages = [];
   });
 
   // Export PNG
