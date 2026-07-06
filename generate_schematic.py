@@ -1,101 +1,134 @@
 import os
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A3, landscape
 from reportlab.lib import colors
 
-def draw_resistor(c, x, y, horizontal=True, label="R"):
+def draw_resistor_symbol(c, x, y, horizontal=True, label="R", val="1M"):
     c.setStrokeColor(colors.HexColor("#00ff88"))
-    c.setLineWidth(1.5)
+    c.setLineWidth(1.2)
+    c.setFillColor(colors.HexColor("#0c1118"))
+    
     if horizontal:
         # Lead in
-        c.line(x, y, x + 15, y)
-        # Resistor body box
-        c.rect(x + 15, y - 6, 25, 12, fill=1, stroke=1)
+        c.line(x, y, x + 10, y)
+        # Resistor body box (20x8)
+        c.rect(x + 10, y - 4, 20, 8, fill=1, stroke=1)
         # Lead out
-        c.line(x + 40, y, x + 55, y)
-        # Label
+        c.line(x + 30, y, x + 40, y)
+        # Labels
         c.setFillColor(colors.HexColor("#e0eaf5"))
-        c.setFont("Helvetica-Bold", 8)
-        c.drawCentredString(x + 27.5, y + 10, label)
+        c.setFont("Helvetica-Bold", 7)
+        c.drawCentredString(x + 20, y + 6, label)
+        c.setFont("Helvetica", 6)
+        c.drawCentredString(x + 20, y - 10, val)
     else:
         # Lead in
-        c.line(x, y, x, y - 15)
-        # Resistor body box
-        c.rect(x - 6, y - 40, 12, 25, fill=1, stroke=1)
+        c.line(x, y, x, y - 10)
+        # Resistor body box (8x20)
+        c.rect(x - 4, y - 30, 8, 20, fill=1, stroke=1)
         # Lead out
-        c.line(x, y - 40, x, y - 55)
-        # Label
+        c.line(x, y - 30, x, y - 40)
+        # Labels
         c.setFillColor(colors.HexColor("#e0eaf5"))
-        c.setFont("Helvetica-Bold", 8)
-        c.drawString(x + 10, y - 27.5, label)
+        c.setFont("Helvetica-Bold", 7)
+        c.drawString(x + 6, y - 16, label)
+        c.setFont("Helvetica", 6)
+        c.drawString(x + 6, y - 26, val)
 
-def draw_zener(c, x, y, label="3.3V"):
+def draw_zener_symbol(c, x, y, label="D", val="3.3V"):
     c.setStrokeColor(colors.HexColor("#ff5555"))
-    c.setLineWidth(1.5)
-    # Lead in (from top)
-    c.line(x, y, x, y - 15)
-    # Triangle (pointing down)
+    c.setLineWidth(1.2)
+    c.setFillColor(colors.HexColor("#0c1118"))
+    
+    # Lead in from top
+    c.line(x, y, x, y - 10)
+    # Zener Triangle pointing down (12x10)
     p = c.beginPath()
-    p.moveTo(x - 8, y - 15)
-    p.lineTo(x + 8, y - 15)
-    p.lineTo(x, y - 30)
+    p.moveTo(x - 6, y - 10)
+    p.lineTo(x + 6, y - 10)
+    p.lineTo(x, y - 20)
     p.close()
     c.drawPath(p, fill=1, stroke=1)
     # Cathode bar with Z-wings
-    c.line(x - 8, y - 30, x + 8, y - 30)
-    c.line(x - 8, y - 30, x - 8, y - 27)
-    c.line(x + 8, y - 33, x + 8, y - 30)
+    c.line(x - 6, y - 20, x + 6, y - 20)
+    c.line(x - 6, y - 20, x - 6, y - 18)
+    c.line(x + 6, y - 22, x + 6, y - 20)
     # Lead out to GND
-    c.line(x, y - 30, x, y - 45)
-    # Label
+    c.line(x, y - 20, x, y - 30)
+    # Labels
     c.setFillColor(colors.HexColor("#e0eaf5"))
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(x + 12, y - 25, label)
+    c.setFont("Helvetica-Bold", 7)
+    c.drawString(x + 8, y - 12, label)
+    c.setFont("Helvetica", 6)
+    c.drawString(x + 8, y - 22, val)
 
-def draw_gnd(c, x, y):
-    c.setStrokeColor(colors.HexColor("#6e8099"))
-    c.setLineWidth(1.5)
-    c.line(x, y, x, y - 8)
-    c.line(x - 10, y - 8, x + 10, y - 8)
-    c.line(x - 6, y - 11, x + 6, y - 11)
-    c.line(x - 2, y - 14, x + 2, y - 14)
-
-def draw_opamp(c, x, y, label="MCP6002"):
-    c.setStrokeColor(colors.HexColor("#4db8ff"))
-    c.setLineWidth(1.5)
+def draw_opamp_symbol(c, x, y, label="U", unit="A"):
+    c.setStrokeColor(colors.HexColor("#c77dff"))
+    c.setLineWidth(1.2)
     c.setFillColor(colors.HexColor("#0c1118"))
+    
+    # Triangle body
     p = c.beginPath()
-    p.moveTo(x, y - 25)
-    p.lineTo(x, y + 25)
-    p.lineTo(x + 40, y)
+    p.moveTo(x, y - 15)
+    p.lineTo(x, y + 15)
+    p.lineTo(x + 25, y)
     p.close()
     c.drawPath(p, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 8)
-    c.setFillColor(colors.HexColor("#e0eaf5"))
-    c.drawString(x + 3, y + 10, "+")
-    c.drawString(x + 3, y - 14, "-")
-    c.setStrokeColor(colors.HexColor("#4db8ff"))
-    c.line(x - 15, y + 12, x, y + 12)
-    c.line(x - 15, y - 12, x, y - 12)
-    c.line(x + 40, y, x + 55, y)
-    c.line(x - 15, y - 12, x - 15, y - 30)
-    c.line(x - 15, y - 30, x + 48, y - 30)
-    c.line(x + 48, y - 30, x + 48, y)
+    
+    # Inputs + and -
     c.setFont("Helvetica-Bold", 7)
-    c.setFillColor(colors.HexColor("#4db8ff"))
-    c.drawCentredString(x + 18, y - 4, label)
+    c.setFillColor(colors.HexColor("#e0eaf5"))
+    c.drawString(x + 2, y + 5, "+")
+    c.drawString(x + 2, y - 9, "-")
+    
+    # Input lines
+    c.setStrokeColor(colors.HexColor("#c77dff"))
+    c.line(x - 10, y + 7, x, y + 7) # Non-inverting input (+)
+    c.line(x - 10, y - 7, x, y - 7) # Inverting input (-)
+    
+    # Output line
+    c.line(x + 25, y, x + 35, y) # Output
+    
+    # Labels
+    c.setFont("Helvetica-Bold", 7)
+    c.setFillColor(colors.HexColor("#c77dff"))
+    c.drawCentredString(x + 12, y - 3, f"{label}{unit}")
+
+def draw_gnd_symbol(c, x, y):
+    c.setStrokeColor(colors.HexColor("#6e8099"))
+    c.setLineWidth(1.2)
+    c.line(x, y, x, y - 5)
+    c.line(x - 6, y - 5, x + 6, y - 5)
+    c.line(x - 4, y - 7, x + 4, y - 7)
+    c.line(x - 2, y - 9, x + 2, y - 9)
+
+def draw_vcc_arrow(c, x, y):
+    c.setStrokeColor(colors.HexColor("#ff6b6b"))
+    c.setLineWidth(1.2)
+    c.line(x, y, x, y + 5)
+    # Triangle pointing up
+    p = c.beginPath()
+    p.moveTo(x - 4, y + 5)
+    p.lineTo(x + 4, y + 5)
+    p.lineTo(x, y + 10)
+    p.close()
+    c.drawPath(p, fill=1, stroke=1)
+    c.setFillColor(colors.HexColor("#ff6b6b"))
+    c.setFont("Helvetica-Bold", 6)
+    c.drawString(x + 6, y + 6, "+3.3V")
 
 def generate_pdf():
     pdf_path = "/Users/noorzoolhilmi/Desktop/vseq/schematic.pdf"
-    pagesize = landscape(A4)
+    # Use A3 landscape (1190.55 x 841.89 points) to fit all 10 channels cleanly side-by-side
+    pagesize = landscape(A3)
     c = canvas.Canvas(pdf_path, pagesize=pagesize)
-    width, height = pagesize # 841.89 x 595.27
+    width, height = pagesize # 1190.55 x 841.89
 
-    # 1. Dark Background Theme
+    # Dark Background
     c.setFillColor(colors.HexColor("#060a0e"))
     c.rect(0, 0, width, height, fill=1, stroke=0)
 
-    # Outer Border Frame
+    # Frame Borders
     c.setStrokeColor(colors.HexColor("#101820"))
     c.setLineWidth(4)
     c.rect(15, 15, width - 30, height - 30)
@@ -103,7 +136,7 @@ def generate_pdf():
     c.setLineWidth(1)
     c.rect(20, 20, width - 40, height - 40)
 
-    # Grid Pattern (Subtle)
+    # Schematic Grid (subtle)
     c.setStrokeColor(colors.HexColor("#0c1118"))
     c.setLineWidth(0.5)
     for x in range(40, int(width) - 20, 20):
@@ -111,193 +144,146 @@ def generate_pdf():
     for y in range(40, int(height) - 20, 20):
         c.line(20, y, width - 20, y)
 
-    # Title Block Header
+    # Title Block Block
     c.setFillColor(colors.HexColor("#0c1118"))
+    c.setStrokeColor(colors.HexColor("#1a2535"))
     c.rect(20, height - 70, width - 40, 50, fill=1, stroke=1)
+    
     c.setFillColor(colors.HexColor("#00ff88"))
     c.setFont("Helvetica-Bold", 18)
-    c.drawString(40, height - 52, "VSeq — 10-CHANNEL VOLTAGE SEQUENCER SCHEMATIC")
+    c.drawString(40, height - 52, "VSeq — FULL 10-CHANNEL HARDWARE SCHEMATIC (STM32 VERSION)")
+    
     c.setFillColor(colors.HexColor("#6e8099"))
     c.setFont("Helvetica", 9)
-    c.drawString(40, height - 64, "Platform: STM32F103C8T6 (Blue Pill)  |  Bipolar Input Range: -30V to +30V Level Shifter (E12 Resistors)")
+    c.drawString(40, height - 64, "Input Range: -30V to +30V (Every Channel)  |  Input Impedance: 1M Ohm  |  Op-Amp Active Overvoltage Protection Clamp")
 
-    # 2. STM32 Blue Pill Board Block (Right Side)
-    mcu_x, mcu_y = 520, 90
-    mcu_w, mcu_h = 240, 360
+    # 10 Channels Configuration
+    ch_names = ["VCC_12V", "VCC_5V", "VCC_3V3", "TRIGGER", "VRM_CORE", "VRAM", "V_FAN", "VDDCI", "PGOOD", "VSOC"]
+    stm32_pins = ["PA0 (ADC0)", "PA1 (ADC1)", "PA2 (ADC2)", "PA3 (ADC3)", "PA4 (ADC4)", "PA5 (ADC5)", "PA6 (ADC6)", "PA7 (ADC7)", "PB0 (ADC8)", "PB1 (ADC9)"]
+
+    # 1. STM32 Board Block (Right Side)
+    mcu_x = 880
+    mcu_y = 60
+    mcu_w = 260
+    mcu_h = 680
     c.setFillColor(colors.HexColor("#0c1118"))
     c.setStrokeColor(colors.HexColor("#4db8ff"))
     c.setLineWidth(2)
     c.rect(mcu_x, mcu_y, mcu_w, mcu_h, fill=1, stroke=1)
 
-    # MCU Header Label
     c.setFillColor(colors.HexColor("#4db8ff"))
-    c.setFont("Helvetica-Bold", 12)
-    c.drawCentredString(mcu_x + mcu_w/2, mcu_y + mcu_h - 22, "STM32F103C8T6 BOARD")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(mcu_x + mcu_w/2, mcu_y + mcu_h - 25, "STM32F103C8T6 BLUE PILL")
     c.setFillColor(colors.HexColor("#6e8099"))
     c.setFont("Helvetica", 8)
-    c.drawCentredString(mcu_x + mcu_w/2, mcu_y + mcu_h - 34, "(BLUE PILL / BLACK PILL)")
+    c.drawCentredString(mcu_x + mcu_w/2, mcu_y + mcu_h - 38, "(12-BIT NATIVE ADC CHANNELS)")
 
-    # Pin Markers inside MCU block
-    pins = [
-        ("PA0 (ADC0)", "CH0 - VCC_12V (±30V)"),
-        ("PA1 (ADC1)", "CH1 - VCC_5V (±30V)"),
-        ("PA2 (ADC2)", "CH2 - VCC_3V3 (±30V)"),
-        ("PA3 (ADC3)", "CH3 - TRIGGER (±30V)"),
-        ("PA4 (ADC4)", "CH4 - VRM_CORE (±30V)"),
-        ("PA5 (ADC5)", "CH5 - VRAM (±30V)"),
-        ("PA6 (ADC6)", "CH6 - V_FAN (±30V)"),
-        ("PA7 (ADC7)", "CH7 - VDDCI (±30V)"),
-        ("PB0 (ADC8)", "CH8 - PGOOD (±30V)"),
-        ("PB1 (ADC9)", "CH9 - VSOC (±30V)")
-    ]
-
-    c.setFont("Helvetica-Bold", 9)
-    for idx, (pin, label) in enumerate(pins):
-        py = mcu_y + mcu_h - 70 - (idx * 28)
-        # Pin dot
-        c.setFillColor(colors.HexColor("#4db8ff"))
-        c.circle(mcu_x, py, 3, fill=1, stroke=0)
-        # Text labels
-        c.setFillColor(colors.HexColor("#e0eaf5"))
-        c.drawString(mcu_x + 10, py - 3, pin)
+    # 2. Draw 10 Channels
+    start_y = 700
+    spacing_y = 64
+    
+    for i in range(10):
+        y = start_y - (i * spacing_y)
+        
+        # Channel alias label
+        c.setFillColor(colors.HexColor("#ffd23f"))
+        c.setFont("Helvetica-Bold", 8)
+        c.drawString(30, y + 10, f"CH{i} — {ch_names[i]}")
         c.setFillColor(colors.HexColor("#6e8099"))
-        c.drawString(mcu_x + 95, py - 3, f"← {label}")
-
-    # USB Connector Box
-    usb_x, usb_y = mcu_x + 70, mcu_y - 25
-    c.setFillColor(colors.HexColor("#101820"))
-    c.setStrokeColor(colors.HexColor("#6e8099"))
-    c.rect(usb_x, usb_y, 100, 25, fill=1, stroke=1)
-    c.setFillColor(colors.HexColor("#e0eaf5"))
-    c.setFont("Helvetica-Bold", 8)
-    c.drawCentredString(usb_x + 50, usb_y + 9, "USB Type-C / Micro")
-    # Connection line to PC
-    c.setStrokeColor(colors.HexColor("#6e8099"))
-    c.line(usb_x + 50, usb_y, usb_x + 50, usb_y - 15)
-    c.drawCentredString(usb_x + 50, usb_y - 25, "TO PC (USB CDC)")
-
-    # 3. Typical Input Channel Stage Drawing (Left Side)
-    stage_x = 60
-    c.setFillColor(colors.HexColor("#e0eaf5"))
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(stage_x, 460, "BIPOLAR LEVEL SHIFTER (-30V TO +30V INPUT)")
-
-    # Probe Tip
-    probe_y = 390
-    c.setStrokeColor(colors.HexColor("#ffd23f"))
-    c.setLineWidth(2)
-    c.line(stage_x, probe_y, stage_x + 40, probe_y)
-    c.setFillColor(colors.HexColor("#ffd23f"))
-    c.circle(stage_x, probe_y, 4, fill=1, stroke=1)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(stage_x - 10, probe_y + 10, "PROBE TIP (-30V..+30V)")
-
-    # R1 Resistor
-    draw_resistor(c, stage_x + 40, probe_y, horizontal=True, label="R1 (Input) 1M")
-
-    # Node Vx
-    vx_x = stage_x + 95
-    c.line(vx_x, probe_y, vx_x + 120, probe_y) # Line to Op-Amp (+)
-    c.setFillColor(colors.HexColor("#00ff88"))
-    c.circle(vx_x + 30, probe_y, 3, fill=1, stroke=0)
-    c.circle(vx_x + 70, probe_y, 3, fill=1, stroke=0)
-
-    # R2 Resistor pointing UP to 3.3V Bias
-    r2_node = vx_x + 30
-    draw_resistor(c, r2_node, probe_y + 55, horizontal=False, label="R2 (Bias) 100k")
-    c.setStrokeColor(colors.HexColor("#ff5555"))
-    c.line(r2_node - 8, probe_y + 55, r2_node + 8, probe_y + 55)
-    c.setFillColor(colors.HexColor("#ff5555"))
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(r2_node + 12, probe_y + 52, "+3.3V VREF")
-
-    # R3 Resistor pointing DOWN to GND
-    draw_resistor(c, r2_node, probe_y, horizontal=False, label="R3 (GND) 120k")
-    draw_gnd(c, r2_node, probe_y - 55)
-
-    # Zener Protection clamp
-    z_node = vx_x + 70
-    draw_zener(c, z_node, probe_y, label="Zener 3.3V Clamp")
-    draw_gnd(c, z_node, probe_y - 45)
-
-    # Draw Op-Amp Buffer
-    op_x = vx_x + 120
-    draw_opamp(c, op_x, probe_y - 12, label="MCP6002")
-
-    # Output line from Op-Amp to ADC pin marker
-    c.setStrokeColor(colors.HexColor("#4db8ff"))
-    c.line(op_x + 55, probe_y - 12, op_x + 75, probe_y - 12)
-
-    # Output to STM32 Node
-    out_x = op_x + 75
-    c.setFillColor(colors.HexColor("#4db8ff"))
-    c.circle(out_x, probe_y - 12, 4, fill=1, stroke=0)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(out_x - 10, probe_y + 2, "TO ADC PIN (PA0-PA7, PB0-PB1)")
-
-    # 4. Connection Mapping Table (Bottom Left)
-    tbl_x, tbl_y = 60, 90
-    c.setFillColor(colors.HexColor("#101820"))
-    c.setStrokeColor(colors.HexColor("#1a2535"))
-    c.rect(tbl_x, tbl_y, 400, 240, fill=1, stroke=1)
-
-    # Table Header
-    c.setFillColor(colors.HexColor("#1a2535"))
-    c.rect(tbl_x, tbl_y + 215, 400, 25, fill=1, stroke=0)
-    c.setFillColor(colors.HexColor("#00ff88"))
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(tbl_x + 10, tbl_y + 225, "VSeq CH")
-    c.drawString(tbl_x + 70, tbl_y + 225, "Pin")
-    c.drawString(tbl_x + 130, tbl_y + 225, "Signal / Rail")
-    c.drawString(tbl_x + 220, tbl_y + 225, "R1 (Input)")
-    c.drawString(tbl_x + 290, tbl_y + 225, "R2 (Bias)")
-    c.drawString(tbl_x + 350, tbl_y + 225, "R3 (Gnd)")
-
-    # Table Rows
-    table_data = [
-        ("CH0", "PA0", "VCC_12V", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH1", "PA1", "VCC_5V", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH2", "PA2", "VCC_3V3", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH3", "PA3", "TRIGGER", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH4", "PA4", "VRM_CORE", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH5", "PA5", "VRAM", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH6", "PA6", "V_FAN", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH7", "PA7", "VDDCI", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH8", "PB0", "PGOOD", "1 MOhm", "100 kOhm", "120 kOhm"),
-        ("CH9", "PB1", "VSOC", "1 MOhm", "100 kOhm", "120 kOhm")
-    ]
-
-    c.setFont("Helvetica", 8)
-    for idx, row in enumerate(table_data):
-        ry = tbl_y + 195 - (idx * 20)
-        # Alternate row background
-        if idx % 2 == 1:
-            c.setFillColor(colors.HexColor("#0c1118"))
-            c.rect(tbl_x + 2, ry - 4, 396, 18, fill=1, stroke=0)
-            
+        c.setFont("Helvetica-Bold", 6)
+        c.drawString(30, y - 2, "PROBE TIP")
+        
+        # Probe circle node
+        c.setStrokeColor(colors.HexColor("#ffd23f"))
+        c.setLineWidth(1.5)
+        c.circle(100, y, 3, fill=0, stroke=1)
+        c.line(103, y, 120, y) # lead in line
+        
+        # R1 (Input Resistor 1M)
+        draw_resistor_symbol(c, 120, y, horizontal=True, label=f"R{i*3+1}", val="1M")
+        
+        # Vx Node
+        vx_x = 180
+        c.setStrokeColor(colors.HexColor("#00ff88"))
+        c.line(160, y, 220, y) # connection line
+        c.setFillColor(colors.HexColor("#00ff88"))
+        c.circle(vx_x, y, 2, fill=1, stroke=0) # Junction Vx
+        
+        # R2 (Bias Resistor 100k UP to +3.3V)
+        draw_resistor_symbol(c, vx_x, y + 40, horizontal=False, label=f"R{i*3+2}", val="100k")
+        c.setStrokeColor(colors.HexColor("#00ff88"))
+        c.line(vx_x, y, vx_x, y + 10)
+        draw_vcc_arrow(c, vx_x, y + 40)
+        
+        # R3 (Gnd Resistor 120k DOWN to GND)
+        draw_resistor_symbol(c, vx_x, y, horizontal=False, label=f"R{i*3+3}", val="120k")
+        draw_gnd_symbol(c, vx_x, y - 40)
+        
+        # Zener Diode (3.3V Clamp to GND)
+        z_x = 220
+        c.setStrokeColor(colors.HexColor("#00ff88"))
+        c.line(vx_x, y, 250, y) # extension line
+        c.circle(z_x, y, 2, fill=1, stroke=0) # Junction Zener
+        draw_zener_symbol(c, z_x, y, label=f"D{i+1}", val="3.3V")
+        draw_gnd_symbol(c, z_x, y - 30)
+        
+        # Op-Amp Buffer Unit (MCP6002)
+        op_x = 265
+        op_ref = f"U{i//2+1}"
+        op_unit = chr(65 + (i % 2)) # A or B
+        draw_opamp_symbol(c, op_x, y, label=op_ref, unit=op_unit)
+        # Wire to non-inverting input (+)
+        c.setStrokeColor(colors.HexColor("#00ff88"))
+        c.line(250, y, op_x - 10, y + 7)
+        
+        # Op-Amp Feedback loop (Inverting input (-) to output)
+        # Feedback loop: (-) input is at op_x-10, y-7. Output is at op_x+35, y.
+        c.setStrokeColor(colors.HexColor("#c77dff"))
+        c.line(op_x - 10, y - 7, op_x - 15, y - 7)
+        c.line(op_x - 15, y - 7, op_x - 15, y - 22)
+        c.line(op_x - 15, y - 22, op_x + 40, y - 22)
+        c.line(op_x + 40, y - 22, op_x + 40, y)
+        c.line(op_x + 35, y, op_x + 40, y)
+        c.circle(op_x + 40, y, 2, fill=1, stroke=0) # Junction Output
+        
+        # Output net label wire all the way to MCU
+        c.setStrokeColor(colors.HexColor("#00ff88"))
+        c.line(op_x + 40, y, mcu_x, y)
+        
+        # PCB Net Name
+        c.setFillColor(colors.HexColor("#00ff88"))
+        c.setFont("Helvetica-Bold", 7)
+        c.drawString(op_x + 50, y + 5, f"CH{i}_ADC")
+        
+        # MCU Pin label & marker on the board
+        c.setFillColor(colors.HexColor("#4db8ff"))
+        c.circle(mcu_x, y, 3, fill=1, stroke=0)
+        c.setFont("Helvetica-Bold", 8)
+        c.drawString(mcu_x + 10, y - 3, stm32_pins[i])
         c.setFillColor(colors.HexColor("#e0eaf5"))
-        c.drawString(tbl_x + 10, ry, row[0])
-        c.drawString(tbl_x + 70, ry, row[1])
-        c.drawString(tbl_x + 130, ry, row[2])
-        c.drawString(tbl_x + 220, ry, row[3])
-        c.drawString(tbl_x + 290, ry, row[4])
-        c.setFillColor(colors.HexColor("#ffd23f") if "Direct" not in row[3] else colors.HexColor("#00ff88"))
-        c.drawString(tbl_x + 350, ry, row[5])
+        c.setFont("Helvetica", 7)
+        c.drawString(mcu_x + 105, y - 3, f"← CH{i}_ADC Net")
 
-    # Footer/Legend Box (Bottom Right Title Area)
+    # Legend Box (Bottom Right)
+    leg_x = mcu_x
+    leg_y = mcu_y
     c.setFillColor(colors.HexColor("#0c1118"))
     c.setStrokeColor(colors.HexColor("#101820"))
-    c.rect(width - 240, 20, 220, 50, fill=1, stroke=1)
-    c.setFillColor(colors.HexColor("#6e8099"))
+    c.rect(leg_x, leg_y, mcu_w, 100, fill=1, stroke=1)
+    
+    c.setFillColor(colors.HexColor("#e0eaf5"))
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(leg_x + 15, leg_y + 80, "DOCUMENT INFORMATION")
     c.setFont("Helvetica", 8)
-    c.drawString(width - 230, 52, "Doc: VSeq Hardware Schematic")
-    c.drawString(width - 230, 40, "Revision: v1.1 (STM32 ADC Only)")
-    c.drawString(width - 230, 28, "Date: 2026-07-06  |  Author: Antigravity")
+    c.setFillColor(colors.HexColor("#6e8099"))
+    c.drawString(leg_x + 15, leg_y + 60, "Project: VSeq Bipolar Voltage Analyzer")
+    c.drawString(leg_x + 15, leg_y + 45, "Schematic Version: Rev 1.2 (Full 10-Channel)")
+    c.drawString(leg_x + 15, leg_y + 30, "Date: 2026-07-06  |  Author: Antigravity")
 
-    # Complete page
+    # Save
     c.showPage()
     c.save()
-    print("Successfully generated schematic.pdf at", pdf_path)
+    print("Successfully generated full schematic.pdf")
 
 if __name__ == "__main__":
     generate_pdf()
