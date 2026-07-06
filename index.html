@@ -814,12 +814,18 @@ function bindCanvasEvents() {
       const chH = plotH / appState.channels.length;
       const chIndex = Math.floor((ren._dragY !== undefined ? ren._dragY : 20) / chH);
       const dt = Math.abs(ren.cursor2T - ren.cursor1T);
-      if (chIndex >= 0 && chIndex < appState.channels.length && dt > 1) {
+      if (chIndex >= 0 && chIndex < appState.channels.length && dt > 2) {
         appState.savedRulers.push({
           chIndex: chIndex,
           t1: ren.cursor1T,
           t2: ren.cursor2T
         });
+        // Auto zoom: selected region occupies 70% of the view width
+        const newVw = dt / 0.7;
+        const centerT = (ren.cursor1T + ren.cursor2T) / 2;
+        ren.viewWindow = Math.max(20, Math.min(60000, newVw));
+        ren.viewOffset = Math.max(0, centerT - ren.viewWindow / 2);
+        ren.following = false;
       }
       ren.cursor1T = null;
       ren.cursor2T = null;
@@ -832,12 +838,18 @@ function bindCanvasEvents() {
       const chH = plotH / appState.channels.length;
       const chIndex = Math.floor((ren._dragY !== undefined ? ren._dragY : 20) / chH);
       const dt = Math.abs(ren.cursor2T - ren.cursor1T);
-      if (chIndex >= 0 && chIndex < appState.channels.length && dt > 1) {
+      if (chIndex >= 0 && chIndex < appState.channels.length && dt > 2) {
         appState.savedRulers.push({
           chIndex: chIndex,
           t1: ren.cursor1T,
           t2: ren.cursor2T
         });
+        // Auto zoom
+        const newVw = dt / 0.7;
+        const centerT = (ren.cursor1T + ren.cursor2T) / 2;
+        ren.viewWindow = Math.max(20, Math.min(60000, newVw));
+        ren.viewOffset = Math.max(0, centerT - ren.viewWindow / 2);
+        ren.following = false;
       }
       ren.cursor1T = null;
       ren.cursor2T = null;
