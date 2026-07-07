@@ -11,7 +11,7 @@ Circuit per channel:
                 +--(+)TLV2371(out)--CHx_ADC net label
                     (-)----+
 """
-import os, uuid, shutil, zipfile
+import os, uuid, shutil, zipfile, subprocess
 
 def g():
     return str(uuid.uuid4())
@@ -346,6 +346,23 @@ def run():
     if os.path.exists(pdf_src):
         shutil.copy2(pdf_src, f"{OUT}/schematic.pdf")
 
+    # ── Run kicad-cli upgrade to convert to latest KiCad format ──
+    KICAD_CLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
+    sch_path = f"{OUT}/vseq.kicad_sch"
+    pcb_path = f"{OUT}/vseq.kicad_pcb"
+    if os.path.exists(KICAD_CLI):
+        result = subprocess.run(
+            [KICAD_CLI, "sch", "upgrade", "--force", sch_path],
+            capture_output=True, text=True
+        )
+        if "Successfully" in result.stdout:
+            print("✓ Schematic upgraded to latest KiCad format")
+        else:
+            print("⚠ SCH upgrade:", result.stderr[-200:] if result.stderr else result.stdout[-200:])
+    else:
+        print("⚠ kicad-cli not found, skipping upgrade")
+
+    # ── Re-zip after upgrade (upgraded file may have different content) ──
     zip_path = "/Users/noorzoolhilmi/Desktop/vseq/kicad_project.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, dirs, files in os.walk(OUT):
@@ -364,3 +381,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+
