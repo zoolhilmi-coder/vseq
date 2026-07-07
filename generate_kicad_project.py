@@ -81,7 +81,7 @@ def create_kicad_project():
     # ── Header ──
     L('(kicad_sch (version 20230121) (generator eeschema)')
     L(f'  (uuid "{gen_uuid()}")')
-    L('  (paper "A3" landscape)')
+    L('  (paper "A3")')
 
     L('  (title_block')
     L('    (title "VSeq 10-Channel Bipolar Voltage Analyser")')
