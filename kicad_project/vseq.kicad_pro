@@ -1,10 +1,19 @@
 {
+  "board": {
+    "design_settings": {}
+  },
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
   "meta": {
+    "filename": "vseq.kicad_pro",
     "version": 1
   },
-  "project": {
-    "back_annotated_footprints": [],
-    "back_annotated_net_names": [],
-    "back_annotated_pads": []
+  "schematic": {
+    "annotate_start_num": 0,
+    "drawing": {
+      "default_text_size": 1.27
+    }
   }
 }
